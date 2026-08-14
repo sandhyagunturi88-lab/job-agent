@@ -15,9 +15,17 @@ class Settings(BaseSettings):
     supabase_jwt_secret: str = ""
     # Also used by the LangGraph checkpointer; empty -> in-memory checkpointer (dev only)
     database_url: str = ""
+    # Dev alternative: persist checkpoints to a local SQLite file so runs
+    # survive restarts without Postgres. Ignored when database_url is set.
+    checkpoint_sqlite_path: str = ""
 
     anthropic_api_key: str = ""
-    anthropic_model: str = "claude-sonnet-5"
+    # claude-opus-5 is the default; set ANTHROPIC_MODEL=claude-sonnet-5 to trade
+    # some capability for lower cost per rerank/tailor call.
+    anthropic_model: str = "claude-opus-5"
+
+    voyage_api_key: str = ""
+    voyage_model: str = "voyage-3"
 
     redis_url: str = ""
 

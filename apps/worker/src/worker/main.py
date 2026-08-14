@@ -11,9 +11,9 @@ from typing import ClassVar
 import httpx
 from arq import cron
 from arq.connections import RedisSettings
+from jobpilot_schemas.embeddings import make_embedder
 
 from worker.config import get_settings
-from worker.embedder import make_embedder
 from worker.pipeline import run_ingestion
 from worker.sources.base import get_sources
 from worker.store import make_store

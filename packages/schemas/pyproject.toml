@@ -3,7 +3,7 @@ name = "jobpilot-schemas"
 version = "0.1.0"
 description = "Shared data models for JobPilot UK (single source of truth; TS types mirror these)"
 requires-python = ">=3.12"
-dependencies = ["pydantic>=2.7"]
+dependencies = ["pydantic>=2.7", "httpx>=0.27"]
 
 [build-system]
 requires = ["hatchling"]

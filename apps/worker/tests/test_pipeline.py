@@ -2,8 +2,8 @@
 
 import asyncio
 
+from jobpilot_schemas.embeddings import EMBEDDING_DIM, DeterministicEmbedder
 from worker.config import WorkerSettings
-from worker.embedder import EMBEDDING_DIM, DeterministicEmbedder
 from worker.pipeline import run_ingestion
 from worker.sources.base import get_sources
 from worker.store import MemoryJobStore

@@ -12,6 +12,8 @@ checkpointer, so a run survives app closes, deploys and restarts.
 from jobpilot_schemas import ApplicationPack, DismissedJob, PreferenceProfile
 from langgraph.types import interrupt
 
+from app import llm
+from app.core.config import get_settings
 from app.graph import stubs
 from app.graph.state import AgentState
 from app.graph.validator import validate_tailored_cv
@@ -23,16 +25,23 @@ def retrieve(state: AgentState) -> dict:
     """Hybrid search (pgvector cosine + Postgres FTS) over chunked JDs, top 50."""
     profile = state.get("preference_profile") or PreferenceProfile()
     inventory = state.get("cv_inventory") or []
-    jobs = stubs.hybrid_search(profile=profile, cv_inventory=inventory, top_k=50)
+    if get_settings().database_url:
+        from app.retrieval import hybrid_search
+
+        jobs = hybrid_search(profile=profile, cv_inventory=inventory, top_k=50)
+    else:
+        jobs = stubs.hybrid_search(profile=profile, cv_inventory=inventory, top_k=50)
     return {"candidate_jobs": jobs, "phase": "retrieve"}
 
 
 def llm_rerank(state: AgentState) -> dict:
     """Single batched Claude call scoring each job 0-100 (LLM call site #1)."""
-    matches = stubs.rerank(
+    matches = llm.rerank(
         jobs=state.get("candidate_jobs") or [],
         profile=state.get("preference_profile") or PreferenceProfile(),
         cv_inventory=state.get("cv_inventory") or [],
+        user_id=state.get("user_id") or "",
+        run_date=state.get("run_date") or "",
     )
     return {"matches": matches, "phase": "llm_rerank"}
 
@@ -77,11 +86,13 @@ def tailor_cv(state: AgentState) -> dict:
     inventory = state.get("cv_inventory") or []
     violations = state.get("violations") or []
     tailored = [
-        stubs.tailor(
+        llm.tailor(
             job=jobs[job_id],
             cv_inventory=inventory,
             edit_requests=state.get("edit_requests") or "",
             violations=[v for v in violations if v.job_id == job_id],
+            user_id=state.get("user_id") or "",
+            run_date=state.get("run_date") or "",
         )
         for job_id in state.get("selected_job_ids") or []
         if job_id in jobs

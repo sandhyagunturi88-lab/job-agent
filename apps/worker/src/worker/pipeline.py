@@ -6,9 +6,10 @@ touches jobs with no chunks yet, so re-running a batch never duplicates."""
 
 import logging
 
+from jobpilot_schemas.embeddings import Embedder
+
 from worker.dedupe import dedupe
 from worker.embed import chunk_jd
-from worker.embedder import Embedder
 from worker.sources.base import IngestionSource
 from worker.store import JobStore
 
@@ -37,7 +38,7 @@ async def run_ingestion(
     for job in to_index:
         # Prefix each chunk with title/company so retrieval matches on them too
         contents = [f"{job.title} at {job.company}\n{chunk}" for chunk in chunk_jd(job)]
-        embeddings = await embedder.embed(contents, input_type="document")
+        embeddings = await embedder.aembed(contents, input_type="document")
         await store.upsert_chunks(
             job.id, list(zip(range(len(contents)), contents, embeddings, strict=True))
         )

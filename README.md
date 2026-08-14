@@ -82,7 +82,10 @@ every external service sits behind an interface and is mocked until keys are pro
 2. ✅ Ingestion + normalised job store + embedding worker (Adzuna/Reed/Greenhouse/Lever/
    Workable clients — mocked until credentials/watchlists are configured; Voyage AI
    embeddings behind `VOYAGE_API_KEY` with a deterministic dev fallback)
-3. Full StateGraph with both interrupts, checkpointer resume tests, validator tests
+3. ✅ Full StateGraph on real infrastructure: Claude (claude-opus-5 via
+   langchain-anthropic) in the two LLM nodes with structured outputs + per-node
+   token usage logging, hybrid pgvector+FTS retrieval, SQLite dev checkpointer,
+   and kill-the-process resume tests (fresh processes + kill -9 mid-node)
 4. PWA screens driven live by graph state over WebSocket
 5. Chrome extension autofill (Greenhouse + Lever first)
 6. Stripe billing (Free: 5 matches/week, 1 tailored CV; Pro unlimited)

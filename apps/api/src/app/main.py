@@ -7,11 +7,14 @@ from app.core.config import get_settings
 from app.graph.build import build_graph
 from app.graph.checkpointer import open_checkpointer
 from app.routers import me, runs, ws
+from app.usage import PostgresUsageLogger, configure_usage_logger
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
+    if settings.database_url:
+        configure_usage_logger(PostgresUsageLogger(settings.database_url))
     async with open_checkpointer(settings) as checkpointer:
         app.state.graph = build_graph(checkpointer=checkpointer)
         yield
