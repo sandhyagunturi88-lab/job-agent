@@ -340,6 +340,43 @@ test('extract-text (JobPilot plugin API) returns raw text with CORS, no licence 
   assert.equal(preflight.headers.get('access-control-allow-methods'), 'POST, OPTIONS');
 });
 
+test('a .doc downloaded from our own Word export round-trips back to clean text', async (t) => {
+  const { server, base } = await startApp({ betaMode: true });
+  t.after(() => server.close());
+
+  // Shape of exportWord()'s output: BOM + Word-HTML wrapper around the CV.
+  const exported =
+    '﻿<html xmlns:o=\'urn:schemas-microsoft-com:office:office\' ' +
+    "xmlns:w='urn:schemas-microsoft-com:office:word'><head><meta charset='utf-8'>" +
+    '<title>CV</title><style>@page{size:A4;} .cv-name{font-size:26px;}</style></head><body>' +
+    '<div class="cv-header"><div class="cv-name">Sam Tidman</div>' +
+    '<div class="cv-contact">Swansea   ·   samtids@hotmail.com</div></div>' +
+    '<div class="cv-sec-block"><h3 class="cv-sec">Education</h3>' +
+    '<div class="grades-line"><b>A Levels:</b> Mathematics &amp; Statistics — A*</div></div>' +
+    '<ul><li>Played football at junior level</li></ul></body></html>';
+  const fd = new FormData();
+  fd.append('file', new Blob([exported], { type: 'application/msword' }), 'sam-tidman-cv.doc');
+  const res = await fetch(`${base}/api/extract-text`, { method: 'POST', body: fd });
+  assert.equal(res.status, 200);
+  const { text } = await res.json();
+  assert.match(text, /Sam Tidman/);
+  assert.match(text, /samtids@hotmail\.com/);
+  assert.match(text, /Mathematics & Statistics/);
+  assert.doesNotMatch(text, /<|@page|cv-name/); // no tags or CSS leak through
+});
+
+test('legacy binary .doc is rejected with a clear save-as message', async (t) => {
+  const { server, base } = await startApp({ betaMode: true });
+  t.after(() => server.close());
+
+  const ole = Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1, 0x00, 0x00]);
+  const fd = new FormData();
+  fd.append('file', new Blob([ole], { type: 'application/msword' }), 'old-cv.doc');
+  const res = await fetch(`${base}/api/extract-text`, { method: 'POST', body: fd });
+  assert.equal(res.status, 415);
+  assert.match((await res.json()).error, /save as .docx or PDF/i);
+});
+
 test('paid rate limit is keyed per license key', async (t) => {
   const lsFetch = async () => ({ ok: true, json: async () => ({ valid: true, license_key: { status: 'active' } }) });
   const { server, base } = await startApp({ betaMode: false, lsFetch, paidRateLimit: 3 });

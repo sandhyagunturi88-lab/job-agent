@@ -59,7 +59,7 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
   const readFile = async (file: File) => {
     setError(null);
     const name = file.name.toLowerCase();
-    if (name.endsWith(".pdf") || name.endsWith(".docx")) {
+    if (name.endsWith(".pdf") || name.endsWith(".docx") || name.endsWith(".doc")) {
       // PDF/Word go through the CV Builder plugin's deterministic extractor
       setBusy(true);
       try {
@@ -150,7 +150,7 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
                 …or upload your CV (PDF, Word, or text)
                 <input
                   type="file"
-                  accept=".pdf,.docx,.txt,.md,text/plain,text/markdown"
+                  accept=".pdf,.docx,.doc,.txt,.md,text/plain,text/markdown"
                   onChange={(e) => e.target.files?.[0] && void readFile(e.target.files[0])}
                   className="mt-1 block w-full text-xs"
                 />

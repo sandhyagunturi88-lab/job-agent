@@ -210,13 +210,44 @@ function createApp(options = {}) {
   // extracted, structured by the model, and discarded — nothing is stored.
   const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
+  // Word-compatible HTML (like our own .doc export) back to plain text.
+  function htmlToText(html) {
+    return html
+      .replace(/<(style|script|head)[\s\S]*?<\/\1>/gi, ' ')
+      .replace(/<(?:br|\/p|\/div|\/li|\/h[1-6]|\/tr|\/td)[^>]*>/gi, '\n')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/&#(\d+);/g, (m, n) => String.fromCharCode(+n))
+      .replace(/[ \t]+/g, ' ')
+      .replace(/\s*\n\s*/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
+
   // Reads PDF/DOCX/plain-text into raw text. Shared by /api/import-cv (which
   // then structures it with the model) and /api/extract-text (which doesn't).
+  // .doc files are usually either our own export (HTML in a Word wrapper —
+  // converted back to text) or legacy binary Word (rejected with a clear
+  // message, since nothing here can parse OLE).
   async function extractFileText(file) {
     const name = (file.originalname || '').toLowerCase();
     if (name.endsWith('.pdf')) return (await pdfParse(file.buffer)).text;
     if (name.endsWith('.docx')) return (await mammoth.extractRawText({ buffer: file.buffer })).value;
-    return file.buffer.toString('utf8').replace(/^﻿/, ''); // strip UTF-8 BOM
+    if (file.buffer.length >= 4 && file.buffer.readUInt32BE(0) === 0xd0cf11e0) {
+      const err = new Error(
+        'That is an old-format binary .doc file — open it in Word and save as .docx or PDF, then upload again.'
+      );
+      err.status = 415;
+      throw err;
+    }
+    const text = file.buffer.toString('utf8').replace(/^﻿/, ''); // strip UTF-8 BOM
+    if (/^\s*(?:<!doctype|<html)/i.test(text) || /urn:schemas-microsoft-com:office/i.test(text)) {
+      return htmlToText(text);
+    }
+    return text;
   }
 
   // CVs are very often named after their owner ("Jane Smith_CV.docx") while
@@ -286,8 +317,10 @@ function createApp(options = {}) {
       logEvent('extract-text', 200);
       res.json({ text });
     } catch (err) {
-      logEvent('extract-text', 400);
-      res.status(400).json({ error: 'Could not read that file. Upload a PDF, DOCX or plain-text CV.' });
+      logEvent('extract-text', err.status || 400);
+      res
+        .status(err.status || 400)
+        .json({ error: err.status ? err.message : 'Could not read that file. Upload a PDF, DOCX or plain-text CV.' });
     }
   });
   app.post('/api/import-cv', upload.single('file'), express.json({ limit: '1mb' }), async (req, res) => {
@@ -302,8 +335,10 @@ function createApp(options = {}) {
         text = req.body.text;
       }
     } catch (err) {
-      logEvent('import-cv', 400);
-      return res.status(400).json({ error: 'Could not read that file. Upload a PDF, DOCX or plain-text CV.' });
+      logEvent('import-cv', err.status || 400);
+      return res
+        .status(err.status || 400)
+        .json({ error: err.status ? err.message : 'Could not read that file. Upload a PDF, DOCX or plain-text CV.' });
     }
     if (!text.trim()) {
       logEvent('import-cv', 400);

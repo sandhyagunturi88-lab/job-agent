@@ -296,7 +296,7 @@
         <div class="field">
           <label>Already have a CV? <span class="opt">(PDF, Word or text — Claude AI reads it and fills the form)</span></label>
           <div class="fill-row">
-            <input type="file" id="f_cvfile" accept=".pdf,.docx,.txt" class="tpl-select" style="flex:1; min-width:200px;">
+            <input type="file" id="f_cvfile" accept=".pdf,.docx,.doc,.txt" class="tpl-select" style="flex:1; min-width:200px;">
             <button class="btn small" id="btnImport" onclick="importCV()">✨ AI import &amp; autofill</button>
           </div>
           <p class="microhint">AI import sends your CV's text to Anthropic's Claude API to pull out the facts; the file is read in memory and discarded — never stored by us. Only details actually in the CV are filled in. Without an AI key the server still fills your contact details, found without AI.</p>
