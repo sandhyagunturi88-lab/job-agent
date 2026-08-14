@@ -279,12 +279,12 @@
         <h2>1 · The basics</h2>
         <p class="hint">Contact details and what this CV is for.</p>
         <div class="field">
-          <label>Already have a CV? <span class="opt">(PDF, Word or text — AI fills the form from it)</span></label>
+          <label>Already have a CV? <span class="opt">(PDF, Word or text — Claude AI reads it and fills the form)</span></label>
           <div class="fill-row">
             <input type="file" id="f_cvfile" accept=".pdf,.docx,.txt" class="tpl-select" style="flex:1; min-width:200px;">
-            <button class="btn small" id="btnImport" onclick="importCV()">⬆ Import &amp; autofill</button>
+            <button class="btn small" id="btnImport" onclick="importCV()">✨ AI import &amp; autofill</button>
           </div>
-          <p class="microhint">Your file is read in memory to pull out the facts, then discarded — never stored. Only details actually in the CV are filled in.</p>
+          <p class="microhint">AI import sends your CV's text to Anthropic's Claude API to pull out the facts; the file is read in memory and discarded — never stored by us. Only details actually in the CV are filled in. Without an AI key the server still fills your contact details, found without AI.</p>
           <p class="ai-msg" id="importMsg"></p>
         </div>
         <div class="row2">
@@ -1250,13 +1250,13 @@ async function importCV(){
     }
     if(!resp.ok){ setImportMsg(data.error||"Import failed — please try again in a moment.", true); return; }
     if(data.beta) $("betaBadge").classList.add("show");
-    applyImport(data.result||"");
+    applyImport(data.result||"", data.ai !== false);
   } finally {
     btn.disabled=false;
     btn.textContent=orig;
   }
 }
-function applyImport(raw){
+function applyImport(raw, usedAI=true){
   let obj=null;
   try{ obj = JSON.parse(raw.replace(/^\s*```(?:json)?\s*|\s*```\s*$/g,"").trim()); }catch(e){}
   if(!obj){
@@ -1290,7 +1290,9 @@ function applyImport(raw){
     drawJobs();
   }
   render();
-  setImportMsg("Imported ✓ — check every field and step; anything you'd already typed was left unchanged.");
+  setImportMsg(usedAI
+    ? "Imported with Claude AI ✓ — check every field and step; anything you'd already typed was left unchanged."
+    : "Imported contact details without AI (no API key on the server) — fill in the rest by hand, or configure ANTHROPIC_API_KEY for full AI import.");
 }
 
 /* ---------- steps 3-5: category + rough text → AI writes the entry in ---------- */

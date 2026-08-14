@@ -264,6 +264,32 @@ test('import-cv endpoint accepts text and rejects empty input', async (t) => {
   assert.equal(empty.status, 400);
 });
 
+test('import-cv without an API key falls back to no-AI contact extraction', async (t) => {
+  const saved = process.env.ANTHROPIC_API_KEY;
+  delete process.env.ANTHROPIC_API_KEY;
+  t.after(() => { if (saved !== undefined) process.env.ANTHROPIC_API_KEY = saved; });
+
+  const { server, base } = await startApp({ betaMode: true, anthropic: null });
+  t.after(() => server.close());
+
+  const res = await fetch(`${base}/api/import-cv`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      text: 'Sam Example\nLeeds\nsam@example.com · 07700 900123\nlinkedin.com/in/samexample\nA Levels: Maths (A)',
+    }),
+  });
+  assert.equal(res.status, 200);
+  const data = await res.json();
+  assert.equal(data.ai, false);
+  const obj = JSON.parse(data.result);
+  assert.equal(obj.name, 'Sam Example');
+  assert.equal(obj.email, 'sam@example.com');
+  assert.equal(obj.phone, '07700 900123');
+  assert.match(obj.links, /linkedin\.com\/in\/samexample/);
+  assert.equal(obj.school, ''); // nothing guessed beyond what regex can prove
+});
+
 test('extract-text (JobPilot plugin API) returns raw text with CORS, no licence gate', async (t) => {
   // betaMode false + no key: AI routes would 402, but extract-text is
   // deterministic (no model call, no cost) so it stays open.

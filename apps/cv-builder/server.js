@@ -219,6 +219,28 @@ function createApp(options = {}) {
     return file.buffer.toString('utf8').replace(/^﻿/, ''); // strip UTF-8 BOM
   }
 
+  // No-AI import fallback: regex-only extraction of the details that can be
+  // found with certainty (contact info). Everything else stays empty rather
+  // than guessed — the honesty rule applies to us too.
+  function basicExtract(text) {
+    const email = (text.match(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/) || [''])[0];
+    const phone = ((text.match(/(?:\+44\s?7\d{3}|07\d{3})[\s-]?\d{3}[\s-]?\d{3}/) || [''])[0]).trim();
+    const links = (text.match(/(?:https?:\/\/\S+|(?:www\.|linkedin\.com\/|github\.com\/)\S+)/gi) || [])
+      .map((u) => u.replace(/[),.;]+$/, ''))
+      .join(', ');
+    const name =
+      text
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .find((l) => l && l.length <= 60 && !/[@\d/|]/.test(l) && l.split(/\s+/).length <= 5) || '';
+    return {
+      name, city: '', email, phone, links,
+      school: '', schooldates: '', gcse: '', alevels: [], projects: [],
+      quant: '', skills: '', jobs: [], responsibility: '', sport: '',
+      fitness: '', awards: '', interests: '',
+    };
+  }
+
   // JobPilot plugin API: deterministic text extraction only — no model call, no
   // licence gate (it costs nothing and stores nothing). CORS is open because the
   // JobPilot PWA calls this from its own origin; the file never leaves memory.
@@ -271,14 +293,20 @@ function createApp(options = {}) {
 
     const client = getAnthropic();
     if (!client) {
-      logEvent('import-cv', 500);
-      return res.status(500).json({ error: 'Server is not configured with an ANTHROPIC_API_KEY.' });
+      // No API key: fill what regex can find (contact details) and say so —
+      // the ai:false flag lets the UI explain what was and wasn't imported.
+      logEvent('import-cv', 200);
+      return res.json({
+        result: JSON.stringify(basicExtract(text)),
+        beta: !!access.beta,
+        ai: false,
+      });
     }
 
     try {
       const result = await extractCV(client, text.slice(0, 15000));
       logEvent('import-cv', 200);
-      res.json({ result, beta: !!access.beta });
+      res.json({ result, beta: !!access.beta, ai: true });
     } catch (err) {
       logEvent('import-cv', 502);
       res.status(502).json({ error: 'Import failed. Please try again in a moment.' });
