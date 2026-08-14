@@ -86,6 +86,12 @@ every external service sits behind an interface and is mocked until keys are pro
    langchain-anthropic) in the two LLM nodes with structured outputs + per-node
    token usage logging, hybrid pgvector+FTS retrieval, SQLite dev checkpointer,
    and kill-the-process resume tests (fresh processes + kill -9 mid-node)
-4. PWA screens driven live by graph state over WebSocket
+4. ✅ PWA screens driven live by graph state over WebSocket ("Daily Briefing"
+   design): onboarding wizard (CV → evidence inventory via deterministic parser,
+   preferences, honest plan picker), Today feed with fit-score rings and
+   dismiss-reason sheets, job detail, CV diff approval with real evidence
+   popovers, Application Pack with copy buttons, tracker with statuses
+   (`/api/v1/me/*` endpoints; memory store without `DATABASE_URL`, Supabase
+   tables with it)
 5. Chrome extension autofill (Greenhouse + Lever first)
 6. Stripe billing (Free: 5 matches/week, 1 tailored CV; Pro unlimited)

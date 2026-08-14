@@ -88,6 +88,8 @@ export interface CopyAnswer {
 
 export interface ApplicationPack {
   job_id: string;
+  job_title: string;
+  company: string;
   tailored_cv: TailoredCV;
   answers: CopyAnswer[];
   apply_url: string;

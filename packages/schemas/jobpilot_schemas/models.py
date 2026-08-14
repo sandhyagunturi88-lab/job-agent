@@ -106,6 +106,8 @@ class CopyAnswer(BaseModel):
 
 class ApplicationPack(BaseModel):
     job_id: str
+    job_title: str = ""
+    company: str = ""
     tailored_cv: TailoredCV
     answers: list[CopyAnswer]
     apply_url: str  # deep link to the employer's application page

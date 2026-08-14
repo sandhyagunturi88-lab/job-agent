@@ -136,10 +136,21 @@ def flag_manual_edit(state: AgentState) -> dict:
 def approve_cv(state: AgentState) -> dict:
     """Interrupt 2 — the user reviews the inline diff (each change carries its
     evidence ids for the tap-to-see evidence note) and approves or asks for edits."""
+    jobs = {j.id: j for j in state.get("candidate_jobs") or []}
     decision = interrupt(
         {
             "type": "approve_cv",
             "tailored_cvs": [cv.model_dump(mode="json") for cv in state.get("tailored_cvs") or []],
+            # slim job summaries so the diff screen can title each CV card
+            "jobs": {
+                cv.job_id: {
+                    "title": jobs[cv.job_id].title,
+                    "company": jobs[cv.job_id].company,
+                    "location": jobs[cv.job_id].location,
+                }
+                for cv in state.get("tailored_cvs") or []
+                if cv.job_id in jobs
+            },
         }
     )
     return {
@@ -161,6 +172,8 @@ def build_application_pack(state: AgentState) -> dict:
     packs = [
         ApplicationPack(
             job_id=cv.job_id,
+            job_title=jobs[cv.job_id].title,
+            company=jobs[cv.job_id].company,
             tailored_cv=cv,
             answers=stubs.copy_answers(jobs[cv.job_id], profile),
             apply_url=jobs[cv.job_id].url,
