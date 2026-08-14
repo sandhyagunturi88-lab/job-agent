@@ -100,4 +100,11 @@ every external service sits behind an interface and is mocked until keys are pro
    as .txt, highlights every filled field — never overwrites what you typed,
    never submits. Fixture pages in `apps/extension/test-pages/`, pure mapping
    logic tested via `npm run test:extension`
-6. Stripe billing (Free: 5 matches/week, 1 tailored CV; Pro unlimited)
+6. ✅ Stripe billing: Free (5 matches/week, 1 tailored CV/week — Monday reset)
+   vs Pro (£9/month, unlimited). Quotas enforced in the run lifecycle (402s
+   with plain-English messages; the match cap is shown as "top N of M found",
+   never silent) and recorded per thread so re-triggering a day's run never
+   double-charges. Stripe checkout/portal via REST + signature-verified
+   webhooks; without keys a mock provider exercises the whole
+   upgrade/downgrade flow offline. No dark patterns: quota always visible,
+   cancel is one click, Free stays useful forever.

@@ -3,11 +3,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.billing import make_billing
 from app.core.config import get_settings
 from app.graph.build import build_graph
 from app.graph.checkpointer import open_checkpointer
 from app.profile_store import make_profile_store
-from app.routers import me, profile, runs, ws
+from app.routers import billing, me, profile, runs, ws
 from app.usage import PostgresUsageLogger, configure_usage_logger
 
 
@@ -17,6 +18,7 @@ async def lifespan(app: FastAPI):
     if settings.database_url:
         configure_usage_logger(PostgresUsageLogger(settings.database_url))
     app.state.profile_store = make_profile_store(settings.database_url)
+    app.state.billing = make_billing(settings)
     async with open_checkpointer(settings) as checkpointer:
         app.state.graph = build_graph(checkpointer=checkpointer)
         yield
@@ -35,6 +37,7 @@ def create_app() -> FastAPI:
     app.include_router(runs.router)
     app.include_router(me.router)
     app.include_router(profile.router)
+    app.include_router(billing.router)
     app.include_router(ws.router)
 
     @app.get("/healthz")

@@ -20,7 +20,7 @@ export interface RunSnapshot {
   phase: string | null;
   next_nodes: string[];
   interrupt:
-    | { type: "pick_jobs"; matches: JobMatch[] }
+    | { type: "pick_jobs"; matches: JobMatch[]; limited_from?: number }
     | { type: "approve_cv"; tailored_cvs: TailoredCV[]; jobs: Record<string, JobSummary> }
     | null;
   values: {
@@ -55,7 +55,17 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     headers: { "Content-Type": "application/json" },
     ...init,
   });
-  if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+  if (!res.ok) {
+    const body = await res.text();
+    // surface FastAPI's {"detail": "..."} as a readable message
+    let detail = body;
+    try {
+      detail = JSON.parse(body).detail ?? body;
+    } catch {
+      /* not JSON */
+    }
+    throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+  }
   return res.json();
 }
 
@@ -80,6 +90,26 @@ export const getInventory = () => get<CVInventoryItem[]>("/api/v1/me/inventory")
 export const getApplications = () => get<ApplicationRow[]>("/api/v1/me/applications");
 export const setApplicationStatus = (jobId: string, status: string) =>
   send<{ job_id: string; status: string }>("PUT", `/api/v1/me/applications/${jobId}`, { status });
+
+// --- billing ----------------------------------------------------------------
+
+export interface BillingStatus {
+  plan: string;
+  pro_price: string;
+  week: string;
+  limits: { matches: number; cvs: number } | null; // null = unlimited (pro)
+  used: { matches: number; cvs: number };
+  dev_billing: boolean;
+}
+
+export const getBilling = () => get<BillingStatus>("/api/v1/billing");
+export const startCheckout = () =>
+  send<{ url: string | null }>("POST", "/api/v1/billing/checkout", {});
+export const startPortal = () =>
+  send<{ url: string | null }>("POST", "/api/v1/billing/portal", {});
+export const devUpgrade = () => send<{ plan: string }>("POST", "/api/v1/billing/dev-upgrade", {});
+export const devDowngrade = () =>
+  send<{ plan: string }>("POST", "/api/v1/billing/dev-downgrade", {});
 
 /** Loads the user's profile once; `refresh` after onboarding writes. */
 export function useProfile() {

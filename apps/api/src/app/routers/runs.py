@@ -14,8 +14,13 @@ from jobpilot_schemas import ApplicationPack, PreferenceProfile
 from langgraph.types import Command
 from pydantic import BaseModel
 
+from app.billing import plan_limits, week_key
 from app.core.auth import CurrentUser, get_current_user
 from app.graph import stubs
+
+
+def _week_for_thread(thread_id: str) -> str:
+    return week_key(date.fromisoformat(thread_id.split(":", 1)[1]))
 
 router = APIRouter(prefix="/api/v1/runs", tags=["runs"])
 
@@ -58,8 +63,9 @@ def _guard_thread(thread_id: str, user: CurrentUser) -> None:
 
 async def _sync_after_invoke(request: Request, user: CurrentUser, thread_id: str) -> None:
     """Persist run outcomes outside the checkpointer: finished Application
-    Packs feed the tracker, and the profile learn_preferences updated feeds
-    tomorrow's retrieval."""
+    Packs feed the tracker, the learn_preferences-updated profile feeds
+    tomorrow's retrieval, and weekly quota usage is recorded (keyed by
+    thread, so re-invoking a day's run never double-charges)."""
     store = request.app.state.profile_store
     snap = await request.app.state.graph.aget_state(
         {"configurable": {"thread_id": thread_id}}
@@ -74,6 +80,17 @@ async def _sync_after_invoke(request: Request, user: CurrentUser, thread_id: str
         if isinstance(profile, dict):
             profile = PreferenceProfile.model_validate(profile)
         await run_in_threadpool(store.save_profile, user.id, profile)
+
+    week = _week_for_thread(thread_id)
+    interrupts = [i.value for task in snap.tasks for i in task.interrupts]
+    pick = next((i for i in interrupts if i.get("type") == "pick_jobs"), None)
+    if pick is not None:
+        await run_in_threadpool(
+            store.record_quota, user.id, thread_id, week, len(pick["matches"]), 0
+        )
+    cvs = values.get("tailored_cvs") or []
+    if cvs:
+        await run_in_threadpool(store.record_quota, user.id, thread_id, week, 0, len(cvs))
 
 
 @router.get("/today")
@@ -113,12 +130,29 @@ async def start_run(
         profile = profile or stub_profile
         inventory = inventory or stub_inventory
 
+    # Free-plan weekly match quota (pro: unlimited). Stated, never silent.
+    match_limit = None
+    limits = plan_limits(await run_in_threadpool(store.get_plan, user.id))
+    if limits is not None:
+        week = week_key(date.fromisoformat(run_date))
+        used = await run_in_threadpool(store.week_quota_usage, user.id, week)
+        match_limit = max(0, limits["matches"] - used["matches"])
+        if match_limit == 0:
+            raise HTTPException(
+                status_code=402,
+                detail=(
+                    f"You've seen your {limits['matches']} free matches this week. "
+                    "Upgrade to Pro for unlimited matches, or new quota arrives Monday."
+                ),
+            )
+
     await graph.ainvoke(
         {
             "user_id": user.id,
             "run_date": run_date,
             "preference_profile": profile,
             "cv_inventory": inventory,
+            "match_limit": match_limit,
         },
         config,
     )
@@ -148,8 +182,29 @@ async def resume_run(
     config = {"configurable": {"thread_id": thread_id}}
 
     snap = await graph.aget_state(config)
-    if not any(task.interrupts for task in snap.tasks):
+    interrupts = [i.value for task in snap.tasks for i in task.interrupts]
+    if not interrupts:
         raise HTTPException(status_code=409, detail="Run is not waiting for input")
+
+    # Free-plan CV quota: picking N jobs means tailoring N CVs.
+    if interrupts[0].get("type") == "pick_jobs":
+        selected = len(body.value.get("selected_job_ids") or [])
+        store = request.app.state.profile_store
+        limits = plan_limits(await run_in_threadpool(store.get_plan, user.id))
+        if limits is not None and selected > 0:
+            used = await run_in_threadpool(
+                store.week_quota_usage, user.id, _week_for_thread(thread_id)
+            )
+            remaining = max(0, limits["cvs"] - used["cvs"])
+            if selected > remaining:
+                raise HTTPException(
+                    status_code=402,
+                    detail=(
+                        f"The free plan includes {limits['cvs']} tailored CV per week "
+                        f"({remaining} left) — pick fewer jobs, or upgrade to Pro for "
+                        "unlimited tailoring."
+                    ),
+                )
 
     await graph.ainvoke(Command(resume=body.value), config)
     await _sync_after_invoke(request, user, thread_id)

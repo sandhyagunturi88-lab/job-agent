@@ -286,18 +286,18 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
               <li>· Application Pack + tracker</li>
             </ul>
           </div>
-          <div className="rounded-2xl bg-white p-5 opacity-70 shadow-sm">
+          <div className="rounded-2xl bg-white p-5 shadow-sm">
             <div className="flex items-baseline justify-between">
               <h2 className="text-base font-semibold">Pro</h2>
-              <span className="text-sm text-slate-500">£/mo</span>
+              <span className="text-sm font-semibold text-slate-700">£9/month</span>
             </div>
             <ul className="mt-2 space-y-1 text-sm text-slate-600">
               <li>· Unlimited matches and tailored CVs</li>
-              <li>· Extension autofill priority</li>
+              <li>· Cancel anytime, keep everything generated</li>
             </ul>
             <p className="mt-2 text-xs text-slate-400">
-              Billing hasn't launched yet — everyone is on Free during the beta. No card, no
-              trial countdown, no surprises.
+              Start on Free — you can upgrade any time from the Tracker tab. No card needed
+              today, no trial countdown.
             </p>
           </div>
           <button

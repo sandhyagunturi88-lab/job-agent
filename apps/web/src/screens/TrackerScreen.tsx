@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import PlanCard from "../components/PlanCard";
 import Sheet from "../components/Sheet";
 import {
   type ApplicationRow,
@@ -91,6 +92,8 @@ export default function TrackerScreen({ run }: { run: ReturnType<typeof useRun> 
           </div>
         ))
       )}
+
+      <PlanCard />
 
       <Sheet
         open={editing !== null}

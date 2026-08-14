@@ -22,6 +22,8 @@ class AgentState(TypedDict, total=False):
     # Inputs loaded at run start
     preference_profile: PreferenceProfile
     cv_inventory: list[CVInventoryItem]
+    # Free-plan weekly match quota remaining at run start; None/absent = unlimited
+    match_limit: int | None
 
     # retrieve -> llm_rerank
     candidate_jobs: list[Job]

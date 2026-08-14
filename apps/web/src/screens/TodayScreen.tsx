@@ -192,6 +192,16 @@ export default function TodayScreen({ run }: { run: ReturnType<typeof useRun> })
       {picking && (
         <>
           <SummaryCard matches={matches} />
+          {snapshot?.interrupt?.type === "pick_jobs" &&
+            snapshot.interrupt.limited_from != null && (
+              <p className="rounded-xl bg-brand-50 p-3 text-xs text-brand-700">
+                Showing your top {matches.length} of {snapshot.interrupt.limited_from} matches
+                found — the Free plan includes 5 per week.{" "}
+                <Link to="/tracker" className="font-semibold underline">
+                  See plans
+                </Link>
+              </p>
+            )}
           {open.map((m) => (
             <MatchCard
               key={m.job.id}

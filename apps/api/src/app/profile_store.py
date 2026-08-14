@@ -40,6 +40,13 @@ class ProfileStore(Protocol):
     def get_pack(self, user_id: str, job_id: str) -> ApplicationPack | None: ...
     def set_application_status(self, user_id: str, job_id: str, status: str) -> bool: ...
     def delete_user(self, user_id: str) -> None: ...
+    def set_stripe_customer(self, user_id: str, customer_id: str) -> None: ...
+    def get_stripe_customer(self, user_id: str) -> str | None: ...
+    def user_for_stripe_customer(self, customer_id: str) -> str | None: ...
+    def record_quota(
+        self, user_id: str, thread_id: str, week: str, matches: int = 0, cvs: int = 0
+    ) -> None: ...
+    def week_quota_usage(self, user_id: str, week: str) -> dict: ...
 
 
 # --- in-memory (dev / tests) --------------------------------------------------
@@ -52,6 +59,10 @@ class _UserData:
     inventory: list[CVInventoryItem] = field(default_factory=list)
     applications: dict[str, ApplicationRow] = field(default_factory=dict)
     packs: dict[str, ApplicationPack] = field(default_factory=dict)  # full packs by job_id
+    stripe_customer_id: str | None = None
+    # thread_id -> {"week": str, "matches": int, "cvs": int}; keyed by thread so
+    # re-triggering a day's run can never double-charge quota (idempotency bar)
+    quota: dict[str, dict] = field(default_factory=dict)
 
 
 class MemoryProfileStore:
@@ -113,6 +124,35 @@ class MemoryProfileStore:
 
     def delete_user(self, user_id: str) -> None:
         self._users.pop(user_id, None)
+
+    def set_stripe_customer(self, user_id: str, customer_id: str) -> None:
+        self._user(user_id).stripe_customer_id = customer_id
+
+    def get_stripe_customer(self, user_id: str) -> str | None:
+        return self._user(user_id).stripe_customer_id
+
+    def user_for_stripe_customer(self, customer_id: str) -> str | None:
+        for user_id, data in self._users.items():
+            if data.stripe_customer_id == customer_id:
+                return user_id
+        return None
+
+    def record_quota(
+        self, user_id: str, thread_id: str, week: str, matches: int = 0, cvs: int = 0
+    ) -> None:
+        entry = self._user(user_id).quota.setdefault(
+            thread_id, {"week": week, "matches": 0, "cvs": 0}
+        )
+        # max(), not +=: recording the same thread again is a no-op
+        entry["matches"] = max(entry["matches"], matches)
+        entry["cvs"] = max(entry["cvs"], cvs)
+
+    def week_quota_usage(self, user_id: str, week: str) -> dict:
+        rows = [e for e in self._user(user_id).quota.values() if e["week"] == week]
+        return {
+            "matches": sum(e["matches"] for e in rows),
+            "cvs": sum(e["cvs"] for e in rows),
+        }
 
 
 # --- Postgres (Supabase) ------------------------------------------------------
@@ -265,8 +305,70 @@ class PostgresProfileStore:
 
     def delete_user(self, user_id: str) -> None:
         with self._connect() as conn:
-            for table in ("applications", "matches", "cv_inventory", "usage", "profiles"):
+            for table in (
+                "applications",
+                "matches",
+                "cv_inventory",
+                "usage",
+                "quota_usage",
+                "profiles",
+            ):
                 conn.execute(f"DELETE FROM public.{table} WHERE user_id = %s::uuid", (user_id,))
+
+    def set_stripe_customer(self, user_id: str, customer_id: str) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO public.profiles (user_id, stripe_customer_id, updated_at)
+                VALUES (%s::uuid, %s, now())
+                ON CONFLICT (user_id) DO UPDATE
+                SET stripe_customer_id = excluded.stripe_customer_id, updated_at = now()
+                """,
+                (user_id, customer_id),
+            )
+
+    def get_stripe_customer(self, user_id: str) -> str | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT stripe_customer_id FROM public.profiles WHERE user_id = %s::uuid",
+                (user_id,),
+            ).fetchone()
+        return row[0] if row else None
+
+    def user_for_stripe_customer(self, customer_id: str) -> str | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT user_id FROM public.profiles WHERE stripe_customer_id = %s",
+                (customer_id,),
+            ).fetchone()
+        return str(row[0]) if row else None
+
+    def record_quota(
+        self, user_id: str, thread_id: str, week: str, matches: int = 0, cvs: int = 0
+    ) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO public.quota_usage (user_id, thread_id, week, matches, cvs)
+                VALUES (%s::uuid, %s, %s, %s, %s)
+                ON CONFLICT (user_id, thread_id) DO UPDATE
+                -- GREATEST, not +: re-recording the same thread is a no-op
+                SET matches = GREATEST(quota_usage.matches, excluded.matches),
+                    cvs = GREATEST(quota_usage.cvs, excluded.cvs)
+                """,
+                (user_id, thread_id, week, matches, cvs),
+            )
+
+    def week_quota_usage(self, user_id: str, week: str) -> dict:
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT COALESCE(SUM(matches), 0), COALESCE(SUM(cvs), 0)
+                FROM public.quota_usage WHERE user_id = %s::uuid AND week = %s
+                """,
+                (user_id, week),
+            ).fetchone()
+        return {"matches": int(row[0]), "cvs": int(row[1])}
 
 
 def make_profile_store(database_url: str | None) -> ProfileStore:

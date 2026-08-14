@@ -47,13 +47,21 @@ def llm_rerank(state: AgentState) -> dict:
 
 
 def pick_jobs(state: AgentState) -> dict:
-    """Interrupt 1 — the user picks jobs; dismissals carry a reason."""
-    decision = interrupt(
-        {
-            "type": "pick_jobs",
-            "matches": [m.model_dump(mode="json") for m in state.get("matches") or []],
-        }
-    )
+    """Interrupt 1 — the user picks jobs; dismissals carry a reason.
+
+    Free-plan match quota is applied here: only the top `match_limit` scored
+    matches are shown, and the payload says how many were found in total —
+    the cap is stated, never silent."""
+    matches = state.get("matches") or []
+    limit = state.get("match_limit")
+    shown = matches if limit is None else matches[:limit]
+    payload: dict = {
+        "type": "pick_jobs",
+        "matches": [m.model_dump(mode="json") for m in shown],
+    }
+    if len(shown) < len(matches):
+        payload["limited_from"] = len(matches)
+    decision = interrupt(payload)
     dismissals = [DismissedJob.model_validate(d) for d in decision.get("dismissals", [])]
     return {
         "selected_job_ids": list(decision.get("selected_job_ids", [])),

@@ -31,6 +31,15 @@ class Settings(BaseSettings):
 
     cors_origins: str = "http://localhost:5173"
 
+    # Billing (phase 6). Empty secret key -> mock provider: checkout/portal
+    # resolve to in-app dev endpoints instead of Stripe.
+    stripe_secret_key: str = ""
+    stripe_webhook_secret: str = ""
+    stripe_price_pro: str = ""
+    pro_price_display: str = "£9/month"
+    # Where Stripe redirects after checkout/portal (the PWA origin)
+    app_base_url: str = "http://localhost:5173"
+
     @property
     def is_dev(self) -> bool:
         return self.app_env != "production"
