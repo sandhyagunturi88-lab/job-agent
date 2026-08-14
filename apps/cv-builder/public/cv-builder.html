@@ -1259,6 +1259,11 @@ async function importCV(){
 function applyImport(raw){
   let obj=null;
   try{ obj = JSON.parse(raw.replace(/^\s*```(?:json)?\s*|\s*```\s*$/g,"").trim()); }catch(e){}
+  if(!obj){
+    // The model sometimes wraps the JSON in prose — take the outermost {...}.
+    const m = raw.match(/\{[\s\S]*\}/);
+    if(m){ try{ obj = JSON.parse(m[0]); }catch(e){} }
+  }
   if(!obj){ setImportMsg("Couldn't read a CV out of that file — try a text-based PDF or DOCX (not a scan/photo).", true); return; }
   // Fill only what's empty — anything already typed is never overwritten.
   const setIfEmpty=(id,val)=>{ if(val && typeof val==="string" && !v(id)) $(id).value=val.trim(); };

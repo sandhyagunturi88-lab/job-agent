@@ -5,7 +5,10 @@ const Anthropic = require('@anthropic-ai/sdk');
 // JobPilot convention: claude-opus-5 default, ANTHROPIC_MODEL to override
 // (e.g. claude-sonnet-5 for lower cost per generation).
 const MODEL = process.env.ANTHROPIC_MODEL || 'claude-opus-5';
-const MAX_TOKENS = 2000;
+// Opus 5 thinks by default and max_tokens caps thinking + response text, so
+// every cap below carries generous headroom (you pay for tokens produced,
+// not for the cap).
+const MAX_TOKENS = 16000;
 
 const SYSTEM_PROMPT =
   'You are a UK careers adviser. Rewrite the CV facts supplied into a one-page ' +
@@ -28,7 +31,7 @@ const SYSTEM_PROMPT =
   'tag in square brackets — [Quick win], [Likely], or [Stretch] — then 1-3 sentences ' +
   'explaining why this strengthens THIS CV for THIS target role, referencing the supplied facts.';
 
-const SUGGEST_MAX_TOKENS = 700;
+const SUGGEST_MAX_TOKENS = 8000;
 
 // Suggestions must never hand the student ready-made claims — each one is a
 // question about what they may already have done, or a small real action.
@@ -45,7 +48,7 @@ const SUGGEST_PROMPT =
   '- Return 4-6 short "- " bullets only — no headings, no preamble, no closing note.\n' +
   '- Banned words: leveraged, synergy, passionate, dynamic, results-driven, spearheaded.';
 
-const POLISH_MAX_TOKENS = 300;
+const POLISH_MAX_TOKENS = 8000;
 
 // Turns a rough, true note from the student into one CV-ready entry for a
 // chosen field. Rephrasing only — it must never add facts they didn't state.
@@ -69,7 +72,7 @@ const POLISH_PROMPT =
   '- any other field ("achievement", "skill", "responsibility", "sport", "award", ' +
   '"interest"): exactly {"text": "the single line"}';
 
-const EXTRACT_MAX_TOKENS = 1500;
+const EXTRACT_MAX_TOKENS = 16000;
 
 // Structures an uploaded CV's raw text into the builder's form fields.
 // Extraction only — anything not present in the text stays empty.
