@@ -6,10 +6,12 @@ API keys stay behind this interface: a source without credentials returns
 deterministic mock data so the whole pipeline runs before real keys exist.
 """
 
-import os
 from typing import Protocol
 
+import httpx
 from jobpilot_schemas import Job
+
+from worker.config import WorkerSettings
 
 
 class IngestionSource(Protocol):
@@ -18,7 +20,13 @@ class IngestionSource(Protocol):
     async def fetch(self) -> list[Job]: ...
 
 
-def get_sources() -> list[IngestionSource]:
+def _split(csv: str) -> list[str]:
+    return [item.strip() for item in csv.split(",") if item.strip()]
+
+
+def get_sources(
+    settings: WorkerSettings, client: httpx.AsyncClient | None = None
+) -> list[IngestionSource]:
     from worker.sources.adzuna import AdzunaSource
     from worker.sources.ats import GreenhouseSource, LeverSource, WorkableSource
     from worker.sources.dwp import DWPFindAJobSource
@@ -26,12 +34,14 @@ def get_sources() -> list[IngestionSource]:
 
     return [
         AdzunaSource(
-            app_id=os.environ.get("ADZUNA_APP_ID", ""),
-            app_key=os.environ.get("ADZUNA_APP_KEY", ""),
+            app_id=settings.adzuna_app_id,
+            app_key=settings.adzuna_app_key,
+            queries=settings.queries,
+            client=client,
         ),
-        ReedSource(api_key=os.environ.get("REED_API_KEY", "")),
+        ReedSource(api_key=settings.reed_api_key, queries=settings.queries, client=client),
         DWPFindAJobSource(),
-        GreenhouseSource(),
-        LeverSource(),
-        WorkableSource(),
+        GreenhouseSource(boards=_split(settings.ats_greenhouse_boards), client=client),
+        LeverSource(companies=_split(settings.ats_lever_companies), client=client),
+        WorkableSource(accounts=_split(settings.ats_workable_accounts), client=client),
     ]

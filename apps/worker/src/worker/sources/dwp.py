@@ -1,6 +1,9 @@
-"""DWP Find a Job (findajob.dwp.gov.uk) — public listings, no key required.
+"""DWP Find a Job (findajob.dwp.gov.uk).
 
-Phase 2 implements polite scraping/feed parsing within the site's terms."""
+There is no official public API for Find a Job; automated access requires
+either the employer/partner interface or explicit permission. This source
+stays mocked until that decision is made with the user — do NOT scrape it.
+"""
 
 from jobpilot_schemas import Job
 

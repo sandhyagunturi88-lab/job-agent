@@ -26,7 +26,7 @@ class Job(BaseModel):
     salary_min: int | None = None
     salary_max: int | None = None
     contract_type: ContractType | None = None
-    ir35_flag: bool | None = None
+    ir35_flag: bool | None = None  # True = inside IR35, False = outside, None = unknown
     source: JobSource
     url: str
     jd_text: str

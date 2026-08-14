@@ -79,7 +79,9 @@ every external service sits behind an interface and is mocked until keys are pro
 ## Build phases
 
 1. ✅ Monorepo scaffold, Supabase migrations (incl. checkpointer tables), Fly + Vercel config
-2. Ingestion + normalised job store + embedding worker
+2. ✅ Ingestion + normalised job store + embedding worker (Adzuna/Reed/Greenhouse/Lever/
+   Workable clients — mocked until credentials/watchlists are configured; Voyage AI
+   embeddings behind `VOYAGE_API_KEY` with a deterministic dev fallback)
 3. Full StateGraph with both interrupts, checkpointer resume tests, validator tests
 4. PWA screens driven live by graph state over WebSocket
 5. Chrome extension autofill (Greenhouse + Lever first)

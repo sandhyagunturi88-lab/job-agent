@@ -1,7 +1,4 @@
-"""Embedding worker: chunk new JDs and index them into pgvector.
-
-Phase 2 wires a real embedding model + Supabase writes; the chunker and the
-interface are fixed now so retrieve()'s hybrid search has a stable contract."""
+"""JD chunking for the embedding index (chunks feed retrieve()'s hybrid search)."""
 
 from jobpilot_schemas import Job
 
@@ -18,8 +15,3 @@ def chunk_jd(job: Job) -> list[str]:
         chunks.append(text[start : start + CHUNK_CHARS])
         start += CHUNK_CHARS - CHUNK_OVERLAP
     return chunks
-
-
-async def embed_and_index(jobs: list[Job]) -> int:
-    """Chunk + embed + upsert into job_chunks. Stubbed until phase 2."""
-    return sum(len(chunk_jd(job)) for job in jobs)

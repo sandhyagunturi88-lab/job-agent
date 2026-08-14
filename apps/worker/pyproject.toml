@@ -12,6 +12,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Production job store (Supabase Postgres). Dev/test fall back to MemoryJobStore.
+postgres = ["psycopg[binary,pool]>=3.2"]
 dev = ["pytest>=8.0", "ruff>=0.6"]
 
 [build-system]

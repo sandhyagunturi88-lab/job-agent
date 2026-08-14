@@ -124,8 +124,9 @@ create table public.job_chunks (
     job_id text not null references public.jobs (id) on delete cascade,
     chunk_index int not null,
     content text not null,
-    -- pgvector half of the hybrid search; 1536 dims (embedding model fixed in phase 2)
-    embedding vector(1536),
+    -- pgvector half of the hybrid search; 1024 dims = voyage-3 (Anthropic has no
+    -- embeddings API; Voyage is its recommended partner — see worker/embedder.py)
+    embedding vector(1024),
     unique (job_id, chunk_index)
 );
 

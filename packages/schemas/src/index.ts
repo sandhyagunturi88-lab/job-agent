@@ -26,7 +26,7 @@ export interface Job {
   salary_min?: number | null;
   salary_max?: number | null;
   contract_type?: ContractType | null;
-  ir35_flag?: boolean | null;
+  ir35_flag?: boolean | null; // true = inside IR35, false = outside, null = unknown
   source: JobSource;
   url: string;
   jd_text: string;
