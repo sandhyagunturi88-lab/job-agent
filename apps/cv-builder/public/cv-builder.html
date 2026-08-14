@@ -122,6 +122,11 @@
   .vt-btn.active{background:var(--accent); border-color:var(--accent); color:#fff;}
   .vt-btn:disabled{opacity:.5; cursor:default;}
 
+  /* ---------- Manual preview editing ---------- */
+  .edit-bar{max-width:760px; margin:0 auto 12px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+  .edit-note{font-size:.75rem; color:var(--ink-faint);}
+  .a4.editing{outline:2px dashed var(--accent); outline-offset:3px; cursor:text;}
+
   .a4{
     background:#fff; width:100%; max-width:760px; margin:0 auto;
     box-shadow:0 2px 14px rgba(20,40,70,.13); border-radius:4px;
@@ -240,7 +245,8 @@
   /* ---------- Print: only the CV ---------- */
   @media print{
     body{background:#fff;}
-    header.app-header, .pane-form, .export-bar, .gaps-panel, .stepper, .ai-wrap, .site-footer, .view-toggle{display:none !important;}
+    header.app-header, .pane-form, .export-bar, .gaps-panel, .stepper, .ai-wrap, .site-footer, .view-toggle, .edit-bar{display:none !important;}
+    .a4.editing{outline:none;}
     .layout{display:block; min-height:0;}
     .pane-preview{padding:0; background:#fff; border:none; overflow:visible;}
     .a4{box-shadow:none; border-radius:0; max-width:100%; padding:10mm 14mm; min-height:0;}
@@ -297,22 +303,34 @@
         </div>
         <div class="field"><label>LinkedIn / GitHub / portfolio URL <span class="opt">(optional)</span></label><input type="text" id="f_links" placeholder="linkedin.com/in/… or github.com/…"></div>
         <div class="field">
+          <label>Address <span class="opt">(optional)</span></label>
+          <input type="text" id="f_address" placeholder="e.g. 12 High Street, Swansea SA1 1AA">
+          <p class="microhint">UK school-leaver CVs usually only need a town, so leave this blank unless the application asks for a full address. The AI rewrite follows UK convention and keeps town only.</p>
+        </div>
+        <div class="field">
           <label>What kind of role are you applying for?</label>
-          <select id="f_target">
-            <option value="general">General early-career role</option>
-            <option value="apprenticeship">Apprenticeship (incl. degree apprenticeships)</option>
-            <option value="university">University interview / admissions</option>
-            <option value="analytical">Analytical / data role</option>
-            <option value="accountancy">Accountancy / finance (trainee accountant)</option>
-            <option value="actuarial">Actuarial (trainee actuary)</option>
-            <option value="quantfinance">Banking / quantitative finance</option>
-            <option value="office">Office / admin role</option>
-            <option value="retail">Retail / customer service</option>
-            <option value="hospitality">Hospitality / catering</option>
-            <option value="trades">Skilled trades / engineering</option>
-            <option value="creative">Creative / media role</option>
-          </select>
-          <p class="microhint">This changes the wording of your profile summary.</p>
+          <input type="text" id="f_target" list="targetRoleList" autocomplete="off"
+                 placeholder="Pick from the list or type your own — e.g. Trainee accountant">
+          <datalist id="targetRoleList">
+            <option value="General early-career role"></option>
+            <option value="Apprenticeship (incl. degree apprenticeships)"></option>
+            <option value="University interview / admissions"></option>
+            <option value="Analytical / data role"></option>
+            <option value="Accountancy / finance (trainee accountant)"></option>
+            <option value="Actuarial (trainee actuary)"></option>
+            <option value="Banking / quantitative finance"></option>
+            <option value="Office / admin role"></option>
+            <option value="Retail / customer service"></option>
+            <option value="Hospitality / catering"></option>
+            <option value="Skilled trades / engineering"></option>
+            <option value="Creative / media role"></option>
+          </datalist>
+          <p class="microhint">Pick a suggestion or type any role — this changes the wording of your profile summary and the evidence prompts in step 3. Clear the box to see the full list again.</p>
+        </div>
+        <div class="field">
+          <label>Profile summary <span class="opt">(optional — written for you from your details if left blank)</span></label>
+          <textarea id="f_profile" rows="3" placeholder="e.g. A Level student studying Mathematics and Physics, seeking a trainee accountancy role with strong spreadsheet skills…"></textarea>
+          <p class="microhint">Whatever you type here replaces the auto-written profile on the CV, word for word.</p>
         </div>
       </div>
     </div>
@@ -480,6 +498,8 @@
       <button class="vt-btn" id="vtAI" onclick="setView('ai')" disabled title="Generate with AI, then click 'Use this version'">AI version</button>
     </div>
 
+    <div class="edit-bar" id="editBar"></div>
+
     <div class="a4" id="cv"></div>
 
     <div class="gaps-panel" id="gapsPanel"></div>
@@ -528,8 +548,12 @@
 const S = { alevels:[], projects:[], jobs:[] };
 let curStep = 0;
 /* Preview can show the form-built CV or the accepted AI rewrite. Exports
-   (PDF via print, Word) read #cv, so they follow whichever is active. */
+   (PDF via print, Word) read #cv, so they follow whichever is active.
+   Each version can also carry saved manual edits, which override the
+   generated HTML until the user resets. */
 let formCVHtml = "", aiCVHtml = "", viewMode = "form";
+const editedHtml = { form: "", ai: "" };
+let editMode = false, curTplKey = "classic";
 const STEPS = ["Basics","Education","Projects","Experience","Interests"];
 
 const $ = id => document.getElementById(id);
@@ -601,7 +625,7 @@ function drawJobs(){
 /* ================= banned-word watch ================= */
 const BANNED = ["leveraged","leverage","synergy","passionate","dynamic","results-driven","results driven","spearheaded","go-getter","think outside the box","guru","ninja","rockstar"];
 function checkBanned(){
-  const all = [v("f_quant"),v("f_responsibility"),v("f_football"),v("f_fitness"),v("f_awards"),v("f_interests"),v("f_skills"),
+  const all = [v("f_profile"),v("f_quant"),v("f_responsibility"),v("f_football"),v("f_fitness"),v("f_awards"),v("f_interests"),v("f_skills"),
     ...S.projects.map(p=>p.desc+" "+p.title), ...S.jobs.map(j=>j.desc)].join(" ").toLowerCase();
   const hits = BANNED.filter(w=>all.includes(w));
   const b = $("banWarn");
@@ -733,9 +757,44 @@ const STEP3_COPY = {
     promptLabel:"Competitions/showcases"
   }
 };
+/* The target-role box is a free-text input with datalist suggestions, so the
+   user can pick a known role or type their own. targetKey() maps whatever
+   they typed onto the closest built-in wording set ("" = no match). */
+const TARGET_ROLES = {
+  general:"General early-career role",
+  apprenticeship:"Apprenticeship (incl. degree apprenticeships)",
+  university:"University interview / admissions",
+  analytical:"Analytical / data role",
+  accountancy:"Accountancy / finance (trainee accountant)",
+  actuarial:"Actuarial (trainee actuary)",
+  quantfinance:"Banking / quantitative finance",
+  office:"Office / admin role",
+  retail:"Retail / customer service",
+  hospitality:"Hospitality / catering",
+  trades:"Skilled trades / engineering",
+  creative:"Creative / media role"
+};
+function targetKey(){
+  const t = v("f_target").toLowerCase();
+  if(!t) return "general";
+  if(TARGET_ROLES[t]) return t;
+  for(const k in TARGET_ROLES){ if(TARGET_ROLES[k].toLowerCase() === t) return k; }
+  if(/actuar/.test(t)) return "actuarial";
+  if(/account|book-?keep|audit/.test(t)) return "accountancy";
+  if(/bank|quant|trading|trader|invest/.test(t)) return "quantfinance";
+  if(/data|analy|statist/.test(t)) return "analytical";
+  if(/apprentice/.test(t)) return "apprenticeship";
+  if(/universit|admission|ucas/.test(t)) return "university";
+  if(/office|admin|clerical|receptionist/.test(t)) return "office";
+  if(/retail|customer|shop|sales assistant/.test(t)) return "retail";
+  if(/hospitalit|cater|barista|kitchen|chef|waiter|waitress|bar staff/.test(t)) return "hospitality";
+  if(/trade|engineer|electric|plumb|mechanic|construct|carpent|weld/.test(t)) return "trades";
+  if(/creativ|media|design|film|music|art|writ|photo/.test(t)) return "creative";
+  return "";
+}
+function targetText(){ return v("f_target") || TARGET_ROLES.general; }
 function step3Copy(){
-  const t = v("f_target");
-  return Object.assign({}, STEP3_COPY.default, STEP3_COPY[t] || {});
+  return Object.assign({}, STEP3_COPY.default, STEP3_COPY[targetKey()] || {});
 }
 function applyStep3Copy(){
   const c = step3Copy();
@@ -752,7 +811,7 @@ function applyStep3Copy(){
 /* ================= profile line by target ================= */
 function profileLine(){
   const grades = S.alevels.filter(a=>a.subj).map(a=>a.subj+(a.grade?" ("+a.grade+")":"")).join(", ");
-  const t = v("f_target") || "general";
+  const t = targetKey();
   if(!grades) return "";
   const base = "A Level student studying " + grades + ".";
   const tail = {
@@ -769,7 +828,11 @@ function profileLine(){
     trades:" Seeking a hands-on trade or engineering role, offering practical problem-solving, care over detail and a willingness to learn on the job.",
     creative:" Seeking a creative role, offering original ideas, self-directed projects and the discipline to finish work to deadline."
   };
-  return base + (tail[t] || tail.general);
+  if(t) return base + (tail[t] || tail.general);
+  // Free-typed role with no built-in match — name it in a generic tail.
+  const typed = v("f_target").replace(/\s+roles?$/i, "");
+  const article = /^[aeiou]/i.test(typed) ? "an" : "a";
+  return base + ` Seeking ${article} ${typed} role, offering a record of self-directed projects and dependable commitments outside school.`;
 }
 
 /* ================= CV render ================= */
@@ -779,7 +842,7 @@ function bulletify(text){
 function render(){
   checkBanned();
   const name = v("f_name"), city=v("f_city"), email=v("f_email"), phone=v("f_phone"), links=v("f_links");
-  const contact = [city,email,phone,links].filter(Boolean).map(x=>`<span>${esc(x)}</span>`).join("");
+  const contact = [city,v("f_address"),email,phone,links].filter(Boolean).map(x=>`<span>${esc(x)}</span>`).join("");
   // Each section is wrapped in a .cv-sec-block with a stable sb-* slug so
   // structural templates (sidebar, banner) can move blocks around.
   const block = (slug, inner) => inner ? `<div class="cv-sec-block sb-${slug}">${inner}</div>` : "";
@@ -787,7 +850,8 @@ function render(){
   h += `<div class="cv-header"><div class="cv-name">${esc(name)||'<span class="cv-empty">Your name</span>'}</div>` +
        `<div class="cv-contact">${contact||'<span class="cv-empty">Contact details appear here</span>'}</div></div>`;
 
-  const prof = profileLine();
+  // A hand-written profile summary always beats the auto-generated line.
+  const prof = v("f_profile") || profileLine();
   if(prof){ h += block("profile", `<h3 class="cv-sec">Profile</h3><p class="cv-profile">${esc(prof)}</p>`); }
 
   /* Education */
@@ -882,22 +946,97 @@ function layoutCV(html){
   return headerHtml + `<div class="cv-cols">${side.outerHTML}${main.outerHTML}</div>`;
 }
 function renderPreview(){
-  const base = (viewMode === "ai" && aiCVHtml) ? aiCVHtml : formCVHtml;
+  if(editMode) return; // never clobber in-progress manual edits
+  const useAI = viewMode === "ai" && aiCVHtml;
+  const base = useAI ? (editedHtml.ai || aiCVHtml) : (editedHtml.form || formCVHtml);
   $("cv").innerHTML = layoutCV(base);
   $("vtForm").classList.toggle("active", viewMode !== "ai");
   $("vtAI").classList.toggle("active", viewMode === "ai");
   $("vtAI").disabled = !aiCVHtml;
+  renderEditBar();
 }
 function setView(mode){
+  if(editMode){ setFlash("Save or discard your preview edits first", true); return; }
   if(mode === "ai" && !aiCVHtml) return;
   viewMode = mode;
   renderPreview();
 }
 
+/* ================= manual preview editing =================
+   The user can click into the preview and retype anything. Saved edits are
+   stored per version (form / AI) in flat "flow" form so template switching
+   still works, and they override the generated HTML until reset. Exports
+   read #cv, so they always ship exactly what's shown. */
+function renderEditBar(){
+  const bar = $("editBar"); if(!bar) return;
+  if(editMode){
+    bar.innerHTML =
+      `<button class="btn small green" onclick="saveEdit()">💾 Save edits</button>` +
+      `<button class="btn small ghost" onclick="discardEdit()">✕ Discard</button>` +
+      `<span class="edit-note">Click anywhere on the CV and type. PDF/Word export exactly what you see.</span>`;
+    return;
+  }
+  const label = viewMode === "ai" ? "AI" : "form";
+  bar.innerHTML =
+    `<button class="btn small" onclick="startEdit()">✏️ Edit this version</button>` +
+    (editedHtml[viewMode]
+      ? `<button class="btn small ghost" onclick="resetEdit()">↺ Back to ${viewMode === "ai" ? "AI original" : "form version"}</button>` +
+        `<span class="edit-note">Showing your edited ${label} version — ${viewMode === "ai" ? "regenerating with AI replaces it" : "form changes are paused until you go back"}.</span>`
+      : "");
+}
+function startEdit(){
+  if(editMode) return;
+  editMode = true;
+  const cv = $("cv");
+  cv.contentEditable = "true";
+  cv.classList.add("editing");
+  cv.focus();
+  renderEditBar();
+}
+function stopEdit(){
+  editMode = false;
+  const cv = $("cv");
+  cv.contentEditable = "false";
+  cv.classList.remove("editing");
+}
+function saveEdit(){
+  editedHtml[viewMode] = unlayoutCV($("cv").innerHTML);
+  stopEdit();
+  renderPreview();
+  setFlash(viewMode === "ai"
+    ? "AI version edits saved ✓ — PDF and Word now export your edited version"
+    : "Edits saved ✓ — the preview now overrides the form until you go back");
+}
+function discardEdit(){
+  stopEdit();
+  renderPreview();
+}
+function resetEdit(){
+  editedHtml[viewMode] = "";
+  renderPreview();
+  setFlash(viewMode === "ai" ? "Reset to the AI original ✓" : "Reset ✓ — the preview follows the form again");
+}
+/* Inverse of layoutCV: flatten a structural (sidebar/banner) arrangement back
+   to header + flat section blocks so any template can re-lay it out. */
+function unlayoutCV(html){
+  const tmp = document.createElement("div"); tmp.innerHTML = html;
+  const header = tmp.querySelector(".cv-header");
+  const headerHtml = header ? header.outerHTML : "";
+  if(header) header.remove();
+  const cols = tmp.querySelector(".cv-cols");
+  if(cols){
+    const side = cols.querySelector(".cv-side"), main = cols.querySelector(".cv-main");
+    return headerHtml + (side ? side.innerHTML : "") + (main ? main.innerHTML : "");
+  }
+  const body = tmp.querySelector(".cv-body");
+  if(body) return headerHtml + body.innerHTML;
+  return headerHtml + tmp.innerHTML;
+}
+
 /* ================= gaps analysis ================= */
 function renderGaps(){
   const gaps=[], actions=[];
-  const target = v("f_target");
+  const target = targetKey();
   if(!S.projects.filter(p=>p.title||p.desc).length && ["analytical","apprenticeship","university","trades","creative"].includes(target)){
     gaps.push("No projects listed — for this kind of application a project is usually the deciding section.");
     actions.push("Build one small project you can show (e.g. a data analysis, a build, or a portfolio piece) — 2–3 weekends of work.");
@@ -937,7 +1076,8 @@ function cvAsText(){
 function buildPrompt(){
   const facts = {
     name:v("f_name"), city:v("f_city"), email:v("f_email"), phone:v("f_phone"), links:v("f_links"),
-    target:$("f_target").options[$("f_target").selectedIndex].text,
+    target:targetText(),
+    profile:v("f_profile")||"NONE",
     school:v("f_school"), dates:v("f_schooldates"),
     alevels:S.alevels.filter(a=>a.subj).map(a=>a.subj+(a.grade?": "+a.grade:"")).join("; ")||"NONE",
     gcse:v("f_gcse")||"NONE",
@@ -962,6 +1102,7 @@ STRICT RULES:
 FACTS:
 Name: ${facts.name} | Location: ${facts.city} | Email: ${facts.email} | Phone: ${facts.phone} | Links: ${facts.links||"NONE"}
 Target: ${facts.target}
+Profile summary written by the candidate (if not NONE, use it as the basis of the profile section): ${facts.profile}
 School: ${facts.school} (${facts.dates})
 A Levels: ${facts.alevels}
 GCSEs: ${facts.gcse}
@@ -1077,7 +1218,9 @@ const WORD_TEMPLATES = {
 /* The preview (and therefore the printed PDF) wears the selected template so
    you see exactly what you'll download. Classic is the base .a4 style. */
 function applyTemplate(){
+  if(editMode){ setFlash("Save or discard your preview edits first", true); $("f_wordtpl").value = curTplKey; return; }
   const key = WORD_TEMPLATES[v("f_wordtpl")] ? v("f_wordtpl") : "classic";
+  curTplKey = key;
   $("cv").className = "a4" + (key === "classic" ? "" : " tpl-" + key);
   renderPreview(); // structural templates change the DOM arrangement too
 }
@@ -1087,9 +1230,13 @@ function exportWord(){
   const tmp=document.createElement("div"); tmp.innerHTML=$("cv").innerHTML;
   const c=tmp.querySelector(".cv-contact");
   if(c){
-    const parts = (viewMode === "ai" && aiCVHtml)
-      ? Array.from(c.querySelectorAll("span")).map(s=>s.textContent.trim())
-      : [v("f_city"),v("f_email"),v("f_phone"),v("f_links")];
+    // Manually edited previews (and the AI version) keep whatever contact line
+    // is on screen; the plain form version rebuilds it from the form fields.
+    const manual = (viewMode === "ai" && aiCVHtml) || editMode || !!editedHtml[viewMode];
+    const spans = Array.from(c.querySelectorAll("span")).map(s=>s.textContent.trim()).filter(Boolean);
+    const parts = manual
+      ? (spans.length ? spans : [c.textContent.trim()])
+      : [v("f_city"),v("f_address"),v("f_email"),v("f_phone"),v("f_links")];
     c.textContent = parts.filter(Boolean).join("   ·   ");
   }
   tmp.querySelectorAll(".cv-entry-head .dates").forEach(d=>{ d.textContent="   ("+d.textContent+")"; });
@@ -1164,9 +1311,8 @@ function renderNextActions(md){
     if(t){ tag=t[1]; rest=rest.slice(t[0].length); }
     return `<li>${title?`<b>${esc(title)}</b> `:""}${tag?`<span class="act-tag">${esc(tag)}</span> `:""}${esc(rest)}</li>`;
   }).join("");
-  const targetText = $("f_target").options[$("f_target").selectedIndex].text;
   p.innerHTML = `<h2>🎯 Three actions for the next six months to create public evidence</h2>
-    <p class="hint" style="margin-bottom:0">Tailored to your target: ${esc(targetText)}.</p>
+    <p class="hint" style="margin-bottom:0">Tailored to your target: ${esc(targetText())}.</p>
     <ul class="act-list">${items}</ul>`;
   p.style.display="block";
 }
@@ -1226,7 +1372,7 @@ async function suggestAI(){
   btn.textContent="⏳ Thinking…";
   const c = step3Copy();
   const context = [
-    "Target role: " + $("f_target").options[$("f_target").selectedIndex].text,
+    "Target role: " + targetText(),
     "A Levels: " + (S.alevels.filter(a=>a.subj).map(a=>a.subj).join(", ") || "none listed"),
     "Projects so far: " + (S.projects.filter(p=>p.title||p.desc).map(p=>p.title+" — "+p.desc).join("; ") || "none"),
     c.quantLabel + ": " + (v("f_quant") || "none"),
@@ -1360,7 +1506,7 @@ async function polishAI(step){
     let resp;
     const headers={ "Content-Type":"application/json" };
     if(licenseKey) headers["X-License-Key"]=licenseKey;
-    const target=$("f_target").options[$("f_target").selectedIndex].text;
+    const target=targetText();
     try{
       resp = await fetch("/api/polish", {
         method:"POST", headers,
@@ -1489,7 +1635,9 @@ function parseAICV(md){
 }
 function useAIVersion(){
   if(!lastAIResult) return;
+  if(editMode){ setFlash("Save or discard your preview edits first", true); return; }
   aiCVHtml = parseAICV(lastAIResult);
+  editedHtml.ai = ""; // fresh AI output replaces any edits made to the previous one
   viewMode = "ai";
   renderPreview();
   setFlash("AI version shown in the preview ✓ — PDF and Word now export this version");
@@ -1503,9 +1651,11 @@ function downloadAIResult(){
 }
 
 /* ================= init ================= */
-["f_name","f_city","f_email","f_phone","f_links","f_target","f_school","f_schooldates","f_gcse",
+["f_name","f_city","f_address","f_email","f_phone","f_links","f_profile","f_target","f_school","f_schooldates","f_gcse",
  "f_quant","f_skills","f_responsibility","f_football","f_fitness","f_awards","f_interests"]
  .forEach(id=>{ $(id).addEventListener("input",render); $(id).addEventListener("change",render); });
+// free-text role box: re-word step 3 as they type or pick a suggestion
+$("f_target").addEventListener("input", applyStep3Copy);
 $("f_target").addEventListener("change", applyStep3Copy);
 $("f_wordtpl").addEventListener("change", applyTemplate);
 addALevel(); addALevel(); addALevel();
