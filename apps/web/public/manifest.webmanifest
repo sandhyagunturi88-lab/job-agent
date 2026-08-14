@@ -1,0 +1,17 @@
+{
+  "name": "JobPilot UK",
+  "short_name": "JobPilot",
+  "description": "Your daily UK job agent: matched jobs, evidence-only tailored CVs, you press submit.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#1d4ed8",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

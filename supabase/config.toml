@@ -1,0 +1,14 @@
+# Supabase CLI config (local dev via `supabase start`, migrations via `supabase db push`).
+# Production project must be created in AWS eu-west-2 (London) — see PRIVACY.md.
+project_id = "jobpilot-uk"
+
+[db]
+port = 54322
+major_version = 15
+
+[api]
+port = 54321
+
+[storage]
+enabled = true
+# Bucket `cvs` (private) holds uploaded CV files, encrypted at rest.

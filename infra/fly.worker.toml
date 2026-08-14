@@ -1,0 +1,18 @@
+# JobPilot UK ingestion/embedding worker — Fly.io, London.
+# Deploy from repo root: fly deploy --config infra/fly.worker.toml
+app = "jobpilot-uk-worker"
+primary_region = "lhr"
+
+[build]
+  dockerfile = "../apps/worker/Dockerfile"
+
+[env]
+  APP_ENV = "production"
+
+# No HTTP service: arq consumes from Upstash Redis (EU) and runs cron ingestion.
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+
+# Secrets: DATABASE_URL, SUPABASE_SERVICE_ROLE_KEY, REDIS_URL,
+# ADZUNA_APP_ID, ADZUNA_APP_KEY, REED_API_KEY

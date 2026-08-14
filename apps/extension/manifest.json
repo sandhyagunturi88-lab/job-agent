@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "JobPilot UK Autofill",
+  "version": "0.1.0",
+  "description": "Fills job application forms from your approved JobPilot Application Pack. Highlights every filled field — you press submit.",
+  "permissions": ["storage", "activeTab"],
+  "host_permissions": [
+    "https://boards.greenhouse.io/*",
+    "https://job-boards.greenhouse.io/*",
+    "https://jobs.lever.co/*"
+  ],
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://boards.greenhouse.io/*", "https://job-boards.greenhouse.io/*"],
+      "js": ["src/content/common.js", "src/content/greenhouse.js"]
+    },
+    {
+      "matches": ["https://jobs.lever.co/*"],
+      "js": ["src/content/common.js", "src/content/lever.js"]
+    }
+  ],
+  "action": {
+    "default_popup": "src/popup/popup.html",
+    "default_title": "JobPilot UK"
+  }
+}
