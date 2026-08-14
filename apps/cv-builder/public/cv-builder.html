@@ -328,9 +328,9 @@
           <p class="microhint">Pick a suggestion or type any role — this changes the wording of your profile summary and the evidence prompts in step 3. Clear the box to see the full list again.</p>
         </div>
         <div class="field">
-          <label>Profile summary <span class="opt">(optional — written for you from your details if left blank)</span></label>
-          <textarea id="f_profile" rows="3" placeholder="e.g. A Level student studying Mathematics and Physics, seeking a trainee accountancy role with strong spreadsheet skills…"></textarea>
-          <p class="microhint">Whatever you type here replaces the auto-written profile on the CV, word for word.</p>
+          <label>Profile summary <span class="opt">(auto-written from your role and A Levels — edit it freely)</span></label>
+          <textarea id="f_profile" rows="3" placeholder="Fills in automatically once you add A Level subjects — or write your own here"></textarea>
+          <p class="microhint">This default updates as you change role or subjects. The moment you reword it, your version is kept and never overwritten — it goes on the CV word for word.</p>
         </div>
       </div>
     </div>
@@ -835,12 +835,27 @@ function profileLine(){
   return base + ` Seeking ${article} ${typed} role, offering a record of self-directed projects and dependable commitments outside school.`;
 }
 
+/* The profile box is auto-filled with the generated line as an editable
+   default. It keeps tracking role/A-level changes until the user types
+   their own wording — after that their text is never overwritten. */
+let lastAutoProfile = "";
+function syncProfileDefault(){
+  const box = $("f_profile");
+  if(!box || document.activeElement === box) return; // never fight the user's cursor
+  const cur = box.value.trim();
+  if(cur && cur !== lastAutoProfile) return;         // customised — hands off
+  const def = profileLine();
+  if(cur !== def) box.value = def;
+  lastAutoProfile = def;
+}
+
 /* ================= CV render ================= */
 function bulletify(text){
   return text.split(/\n|;(?=\s)/).map(s=>s.trim()).filter(Boolean);
 }
 function render(){
   checkBanned();
+  syncProfileDefault();
   const name = v("f_name"), city=v("f_city"), email=v("f_email"), phone=v("f_phone"), links=v("f_links");
   const contact = [city,v("f_address"),email,phone,links].filter(Boolean).map(x=>`<span>${esc(x)}</span>`).join("");
   // Each section is wrapped in a .cv-sec-block with a stable sb-* slug so
