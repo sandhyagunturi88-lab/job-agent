@@ -290,6 +290,34 @@ test('import-cv without an API key falls back to no-AI contact extraction', asyn
   assert.equal(obj.school, ''); // nothing guessed beyond what regex can prove
 });
 
+test('import-cv derives the name from the filename when the CV text lacks it', async (t) => {
+  const saved = process.env.ANTHROPIC_API_KEY;
+  delete process.env.ANTHROPIC_API_KEY;
+  t.after(() => { if (saved !== undefined) process.env.ANTHROPIC_API_KEY = saved; });
+
+  const { server, base } = await startApp({ betaMode: true, anthropic: null });
+  t.after(() => server.close());
+
+  // Names commonly live in a Word header that text extraction can't see —
+  // but the file itself is named after its owner.
+  const fd = new FormData();
+  fd.append(
+    'file',
+    new Blob(['Contact: jane@example.com\nA Levels: Maths (A)'], { type: 'text/plain' }),
+    'Jane Smith_CV.txt',
+  );
+  const res = await fetch(`${base}/api/import-cv`, { method: 'POST', body: fd });
+  assert.equal(res.status, 200);
+  const obj = JSON.parse((await res.json()).result);
+  assert.equal(obj.name, 'Jane Smith');
+
+  // ...but gibberish filenames must not become names
+  const fd2 = new FormData();
+  fd2.append('file', new Blob(['jane@example.com'], { type: 'text/plain' }), 'scan_2024_01.txt');
+  const obj2 = JSON.parse((await (await fetch(`${base}/api/import-cv`, { method: 'POST', body: fd2 })).json()).result);
+  assert.equal(obj2.name, '');
+});
+
 test('extract-text (JobPilot plugin API) returns raw text with CORS, no licence gate', async (t) => {
   // betaMode false + no key: AI routes would 402, but extract-text is
   // deterministic (no model call, no cost) so it stays open.

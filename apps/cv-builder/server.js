@@ -219,6 +219,23 @@ function createApp(options = {}) {
     return file.buffer.toString('utf8').replace(/^﻿/, ''); // strip UTF-8 BOM
   }
 
+  // CVs are very often named after their owner ("Jane Smith_CV.docx") while
+  // the name itself sits in a Word header that text extraction can't see.
+  // Derive a name from the filename when it looks like one — letters only,
+  // 1-4 words after stripping cv/resume noise.
+  function nameFromFilename(originalname) {
+    const cleaned = (originalname || '')
+      .replace(/\.[^.]+$/, '')
+      .replace(/[_\-.]+/g, ' ') // separators first, so "_CV" gets a word boundary
+      .replace(/\b(cv|resume|curriculum|vitae|final|updated|copy|draft|v\d+)\b/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!cleaned || /[^a-z ']/i.test(cleaned)) return '';
+    const words = cleaned.split(' ');
+    if (words.length > 4) return '';
+    return words.map((w) => w[0].toUpperCase() + w.slice(1)).join(' ');
+  }
+
   // No-AI import fallback: regex-only extraction of the details that can be
   // found with certainty (contact info). Everything else stays empty rather
   // than guessed — the honesty rule applies to us too.
@@ -228,11 +245,13 @@ function createApp(options = {}) {
     const links = (text.match(/(?:https?:\/\/\S+|(?:www\.|linkedin\.com\/|github\.com\/)\S+)/gi) || [])
       .map((u) => u.replace(/[),.;]+$/, ''))
       .join(', ');
+    // Only accept a line that is SHAPED like a name — 2-4 plain words, no
+    // punctuation — otherwise section headings ("A Levels: Maths") slip in.
     const name =
       text
         .split(/\r?\n/)
         .map((l) => l.trim())
-        .find((l) => l && l.length <= 60 && !/[@\d/|]/.test(l) && l.split(/\s+/).length <= 5) || '';
+        .find((l) => l.length <= 60 && /^[A-Za-z][A-Za-z']*(?:[ -][A-Za-z][A-Za-z']*){1,3}$/.test(l)) || '';
     return {
       name, city: '', email, phone, links,
       school: '', schooldates: '', gcse: '', alevels: [], projects: [],
@@ -291,20 +310,37 @@ function createApp(options = {}) {
       return res.status(400).json({ error: 'Upload a PDF, DOCX or text file (or send "text") containing your CV.' });
     }
 
+    const filename = req.file ? req.file.originalname || '' : '';
     const client = getAnthropic();
     if (!client) {
       // No API key: fill what regex can find (contact details) and say so —
       // the ai:false flag lets the UI explain what was and wasn't imported.
+      const extracted = basicExtract(text);
+      if (!extracted.name) extracted.name = nameFromFilename(filename);
       logEvent('import-cv', 200);
       return res.json({
-        result: JSON.stringify(basicExtract(text)),
+        result: JSON.stringify(extracted),
         beta: !!access.beta,
         ai: false,
       });
     }
 
     try {
-      const result = await extractCV(client, text.slice(0, 15000));
+      let result = await extractCV(client, text.slice(0, 15000), filename);
+      // Safety net: if the model left name empty but the filename carries it,
+      // backfill deterministically rather than losing it.
+      try {
+        const obj = JSON.parse(result.replace(/^\s*```(?:json)?\s*|\s*```\s*$/g, '').trim());
+        if (obj && typeof obj === 'object' && !obj.name) {
+          const fromFile = nameFromFilename(filename);
+          if (fromFile) {
+            obj.name = fromFile;
+            result = JSON.stringify(obj);
+          }
+        }
+      } catch {
+        // non-JSON model output: hand it to the client's tolerant parser as-is
+      }
       logEvent('import-cv', 200);
       res.json({ result, beta: !!access.beta, ai: true });
     } catch (err) {

@@ -90,7 +90,11 @@ const EXTRACT_PROMPT =
   'Notes: "quant" = maths/competition/achievement evidence; "skills" = ' +
   'comma-separated tools and skills; "sport" = sports or physical activities; ' +
   '"responsibility" = prefect/captain/mentor-style roles; put anything that ' +
-  'fits nowhere else into "interests".';
+  'fits nowhere else into "interests".\n\n' +
+  'A FILENAME line may precede the CV text. Names often live in a Word ' +
+  'header the text extractor cannot see — if the candidate\'s name is absent ' +
+  'from the CV text but clearly present in the filename (e.g. "Jane Smith ' +
+  'CV.docx"), use it for "name".';
 
 function createAnthropicClient(apiKey) {
   return new Anthropic({ apiKey });
@@ -138,12 +142,13 @@ async function polishEntry(client, { category, text, target }) {
     .join('\n');
 }
 
-async function extractCV(client, text) {
+async function extractCV(client, text, filename = '') {
+  const content = (filename ? 'FILENAME: ' + filename + '\n' : '') + 'CV TEXT:\n' + text;
   const response = await client.messages.create({
     model: MODEL,
     max_tokens: EXTRACT_MAX_TOKENS,
     system: EXTRACT_PROMPT,
-    messages: [{ role: 'user', content: 'CV TEXT:\n' + text }],
+    messages: [{ role: 'user', content }],
   });
   return response.content
     .filter((block) => block.type === 'text')
