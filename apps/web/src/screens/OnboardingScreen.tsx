@@ -1,7 +1,7 @@
 import type { ContractType, CVInventoryItem, PreferenceProfile } from "@jobpilot/schemas";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { extractCvFile, savePlan, saveProfile, uploadCv } from "../lib/api";
+import { cvBuilderUrl, extractCvFile, savePlan, saveProfile, uploadCv } from "../lib/api";
 
 const CONTRACT_OPTIONS: { value: ContractType; label: string }[] = [
   { value: "permanent", label: "Permanent" },
@@ -166,6 +166,22 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
               >
                 {busy ? "Reading your CV…" : "Build my evidence inventory"}
               </button>
+
+              <div className="mt-4 rounded-xl bg-slate-50 p-3 text-center">
+                <p className="text-sm text-slate-600">Don't have a CV yet?</p>
+                <a
+                  href={cvBuilderUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-2 block w-full rounded-xl bg-slate-200 py-2.5 text-sm font-semibold text-slate-700"
+                >
+                  Create one in CV Studio →
+                </a>
+                <p className="mt-2 text-xs text-slate-400">
+                  Guided steps with live preview and PDF/Word export — then come back and
+                  upload it here.
+                </p>
+              </div>
             </>
           ) : (
             <>
