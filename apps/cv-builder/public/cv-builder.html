@@ -122,6 +122,10 @@
   .vt-btn.active{background:var(--accent); border-color:var(--accent); color:#fff;}
   .vt-btn:disabled{opacity:.5; cursor:default;}
 
+  /* ---------- Autosave status ---------- */
+  .save-bar{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; font-size:.75rem; color:var(--ink-faint);}
+  .save-bar .btn{flex-shrink:0;}
+
   /* ---------- Manual preview editing ---------- */
   .edit-bar{max-width:760px; margin:0 auto 12px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
   .edit-note{font-size:.75rem; color:var(--ink-faint);}
@@ -270,6 +274,11 @@
 
   <!-- ============ FORM PANE ============ -->
   <div class="pane-form">
+
+    <div class="save-bar">
+      <span id="saveStatus">💾 Autosaves to this browser as you type — close the tab and come back any time</span>
+      <button class="btn small ghost" onclick="clearSaved()">🗑 Clear &amp; start over</button>
+    </div>
 
     <div class="stepper" id="stepper"></div>
 
@@ -540,7 +549,7 @@
 </div>
 
 <footer class="site-footer">
-  CV Builder · <a href="/privacy">Privacy</a> · Your CV data is processed in memory to generate output — never stored, never used for training.
+  CV Builder · <a href="/privacy">Privacy</a> · Your CV data is processed in memory to generate output — never stored on our servers, never used for training. Progress autosaves only to your own browser; "Clear &amp; start over" deletes it.
 </footer>
 
 <script>
@@ -560,6 +569,67 @@ const $ = id => document.getElementById(id);
 const esc = s => (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 const v = id => ($(id) ? $(id).value.trim() : "");
 
+/* ================= autosave / resume (this browser only) =================
+   Everything is saved to localStorage as the user types, and restored the
+   next time the page opens — CV data still never reaches our servers.
+   The licence key is deliberately excluded (memory-only promise). */
+const SAVE_KEY = "cvbuilder.v1";
+const SAVED_FIELDS = ["f_name","f_city","f_address","f_email","f_phone","f_links","f_profile","f_target",
+  "f_school","f_schooldates","f_gcse","f_quant","f_skills","f_responsibility","f_football","f_fitness",
+  "f_awards","f_interests","f_wordtpl"];
+let saveTimer = null, restoring = false;
+function saveState(){
+  const fields = {};
+  SAVED_FIELDS.forEach(id => { if($(id)) fields[id] = $(id).value; });
+  const snap = { fields, alevels:S.alevels, projects:S.projects, jobs:S.jobs,
+                 editedHtml:{form:editedHtml.form, ai:editedHtml.ai},
+                 aiCVHtml, lastAIResult, viewMode, step:curStep };
+  try{
+    localStorage.setItem(SAVE_KEY, JSON.stringify(snap));
+    const el=$("saveStatus");
+    if(el) el.textContent = "💾 Saved in this browser ✓ " +
+      new Date().toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+  }catch(e){
+    const el=$("saveStatus");
+    if(el) el.textContent = "⚠ Couldn't autosave — browser storage is unavailable or full";
+  }
+}
+function scheduleSave(){
+  if(restoring) return;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveState, 600);
+}
+function restoreState(){
+  let d = null;
+  try{ d = JSON.parse(localStorage.getItem(SAVE_KEY) || "null"); }catch(e){}
+  if(!d || !d.fields) return false;
+  restoring = true;
+  SAVED_FIELDS.forEach(id => {
+    if($(id) && typeof d.fields[id] === "string") $(id).value = d.fields[id];
+  });
+  const rows = a => Array.isArray(a) ? a : [];
+  if(rows(d.alevels).length) S.alevels = rows(d.alevels);
+  if(rows(d.projects).length) S.projects = rows(d.projects);
+  if(rows(d.jobs).length) S.jobs = rows(d.jobs);
+  const eh = d.editedHtml || {};
+  editedHtml.form = typeof eh.form === "string" ? eh.form : "";
+  editedHtml.ai = typeof eh.ai === "string" ? eh.ai : "";
+  aiCVHtml = typeof d.aiCVHtml === "string" ? d.aiCVHtml : "";
+  lastAIResult = typeof d.lastAIResult === "string" ? d.lastAIResult : "";
+  viewMode = (d.viewMode === "ai" && aiCVHtml) ? "ai" : "form";
+  curStep = Math.min(Math.max(+d.step || 0, 0), STEPS.length - 1);
+  // If the saved profile is still the auto-written default, let it keep
+  // tracking role/subject changes rather than freezing it as "custom".
+  if(v("f_profile") && v("f_profile") === profileLine().trim()) lastAutoProfile = v("f_profile");
+  restoring = false;
+  return true;
+}
+function clearSaved(){
+  if(!confirm("Delete everything saved in this browser and start a blank CV?")) return;
+  try{ localStorage.removeItem(SAVE_KEY); }catch(e){}
+  location.reload();
+}
+
 /* ================= stepper / navigation ================= */
 function drawStepper(){
   $("stepper").innerHTML = STEPS.map((s,i)=>
@@ -570,6 +640,7 @@ function drawStepper(){
   });
   $("btnPrev").style.visibility = curStep===0 ? "hidden" : "visible";
   $("btnNext").style.visibility = curStep===STEPS.length-1 ? "hidden" : "visible";
+  scheduleSave();
 }
 function goStep(i){ curStep=i; drawStepper(); }
 function nav(d){ curStep=Math.min(Math.max(curStep+d,0),STEPS.length-1); drawStepper(); }
@@ -969,6 +1040,7 @@ function renderPreview(){
   $("vtAI").classList.toggle("active", viewMode === "ai");
   $("vtAI").disabled = !aiCVHtml;
   renderEditBar();
+  scheduleSave();
 }
 function setView(mode){
   if(editMode){ setFlash("Save or discard your preview edits first", true); return; }
@@ -1300,6 +1372,7 @@ function showAIResult(text){
   const out=$("aiOutput"); out.textContent=text; out.style.display="block";
   $("aiActions").style.display="flex";
   renderNextActions(text);
+  scheduleSave();
   $("aiPanel").scrollIntoView({behavior:"smooth", block:"nearest"});
 }
 /* Pull the "### Three actions…" bullets out of the AI feedback and show them
@@ -1673,11 +1746,16 @@ function downloadAIResult(){
 $("f_target").addEventListener("input", applyStep3Copy);
 $("f_target").addEventListener("change", applyStep3Copy);
 $("f_wordtpl").addEventListener("change", applyTemplate);
-addALevel(); addALevel(); addALevel();
+// resume any work saved in this browser; otherwise start with 3 blank A-level rows
+const resumed = restoreState();
+if(S.alevels.length){ drawALevels(); } else { addALevel(); addALevel(); addALevel(); }
+if(S.projects.length) drawProjects();
+if(S.jobs.length) drawJobs();
 // landing page links open the builder with a template preselected (?template=sidebar)
 const qTpl = new URLSearchParams(location.search).get("template");
 if(qTpl && WORD_TEMPLATES[qTpl]) $("f_wordtpl").value = qTpl;
 drawStepper(); render(); applyStep3Copy(); applyTemplate();
+if(resumed) setFlash("Welcome back — your saved progress was restored ✓");
 </script>
 </body>
 </html>
