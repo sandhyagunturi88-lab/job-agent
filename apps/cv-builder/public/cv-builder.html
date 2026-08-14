@@ -303,6 +303,9 @@
             <option value="apprenticeship">Apprenticeship (incl. degree apprenticeships)</option>
             <option value="university">University interview / admissions</option>
             <option value="analytical">Analytical / data role</option>
+            <option value="accountancy">Accountancy / finance (trainee accountant)</option>
+            <option value="actuarial">Actuarial (trainee actuary)</option>
+            <option value="quantfinance">Banking / quantitative finance</option>
             <option value="office">Office / admin role</option>
             <option value="retail">Retail / customer service</option>
             <option value="hospitality">Hospitality / catering</option>
@@ -625,6 +628,45 @@ const STEP3_COPY = {
     quantHead:"Mathematics & competitions",
     promptLabel:"Maths/quant evidence"
   },
+  accountancy:{
+    title:"3 · Projects & numerical evidence",
+    hint:'Real things with numbers you handled honestly — "good with money" is not an entry; "tracked £400 over two terms" is.',
+    projLabel:"Projects (treasurer roles, budgets kept, Young Enterprise accounts, spreadsheets built…)",
+    quantLabel:"Mathematics & money evidence",
+    quantPh:"e.g. UKMT Senior Maths Challenge — Silver, 2025; chess club treasurer handling £400/term; built a family budget tracker in Excel",
+    quantHint:"Maths competitions, treasurer or cash-handling roles, any budget or accounts you kept.",
+    skillsLabel:"Numerical skills & tools",
+    skillsPh:"e.g. Excel (formulas, pivot tables), Google Sheets, basic bookkeeping, accurate data entry",
+    cvSection:"Projects & Numerical Evidence",
+    quantHead:"Mathematics & money evidence",
+    promptLabel:"Maths/money evidence"
+  },
+  actuarial:{
+    title:"3 · Projects & mathematical evidence",
+    hint:'Real mathematical work you can show — "good at maths" is not an entry; "UKMT Gold, 2025" or "EPQ modelling real data" is.',
+    projLabel:"Projects (statistics coursework, data modelling, EPQ with data, coding experiments…)",
+    quantLabel:"Mathematics & statistics evidence",
+    quantPh:"e.g. UKMT Senior Maths Challenge — Gold, 2025; Further Maths A Level; EPQ modelling life-expectancy data",
+    quantHint:"Olympiads/UKMT, Further Maths, STEP/MAT prep, statistics or probability projects.",
+    skillsLabel:"Technical skills & tools",
+    skillsPh:"e.g. Excel, statistics (probability, distributions), Python or R basics",
+    cvSection:"Projects & Mathematical Evidence",
+    quantHead:"Mathematics & statistics",
+    promptLabel:"Maths/statistics evidence"
+  },
+  quantfinance:{
+    title:"3 · Projects & quantitative evidence",
+    hint:'Real quantitative work you can show — "interested in markets" is not an entry; "ran a paper portfolio, tracked results weekly" is.',
+    projLabel:"Projects (investment club, trading simulations, data analysis, EPQ, coding…)",
+    quantLabel:"Mathematics & markets evidence",
+    quantPh:"e.g. UKMT Senior Maths Challenge — Gold, 2025; ran investment-club paper portfolio for a term with weekly tracking; Kaggle entry",
+    quantHint:"Maths competitions, investment/enterprise clubs, anything tracked with real numbers.",
+    skillsLabel:"Quantitative skills & tools",
+    skillsPh:"e.g. Excel, Python (pandas), statistics, reading company accounts basics",
+    cvSection:"Projects & Quantitative Evidence",
+    quantHead:"Mathematics & markets evidence",
+    promptLabel:"Maths/markets evidence"
+  },
   office:{
     title:"3 · Projects & organisation",
     hint:'Real things you organised, produced or completed — with evidence where possible. "Good with computers" is not an entry; "produced X using Y" is.',
@@ -718,6 +760,9 @@ function profileLine(){
     apprenticeship:" Seeking an apprenticeship combining paid work with study, offering practical skills and a record of disciplined, self-directed work.",
     university:" Applying analytical and independent study skills developed through coursework, self-directed projects and activities outside school.",
     analytical:" Seeking an entry-level analytical role, bringing strong mathematical reasoning, hands-on data work and disciplined self-directed learning.",
+    accountancy:" Seeking a trainee accountancy role, offering strong numerical accuracy, confident spreadsheet work and a methodical, double-checked approach to money and detail.",
+    actuarial:" Seeking an actuarial trainee path, offering strong mathematics — particularly statistics and probability — persistence with hard problems and precise, methodical working.",
+    quantfinance:" Seeking a banking or quantitative finance role, offering strong mathematics, hands-on data work and a disciplined, accuracy-first approach under deadlines.",
     office:" Seeking an office-based role, offering strong organisation, clear written communication and a dependable, detail-focused approach.",
     retail:" Seeking a retail or customer service role, offering a friendly, dependable manner and confidence dealing with people.",
     hospitality:" Seeking a hospitality role, offering reliability under pressure, teamwork and a commitment to good service.",
