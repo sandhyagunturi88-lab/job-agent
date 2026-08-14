@@ -37,6 +37,7 @@ class ProfileStore(Protocol):
     def save_inventory(self, user_id: str, items: list[CVInventoryItem]) -> None: ...
     def list_applications(self, user_id: str) -> list[ApplicationRow]: ...
     def record_pack(self, user_id: str, pack: ApplicationPack) -> None: ...
+    def get_pack(self, user_id: str, job_id: str) -> ApplicationPack | None: ...
     def set_application_status(self, user_id: str, job_id: str, status: str) -> bool: ...
     def delete_user(self, user_id: str) -> None: ...
 
@@ -50,6 +51,7 @@ class _UserData:
     plan: str = "free"
     inventory: list[CVInventoryItem] = field(default_factory=list)
     applications: dict[str, ApplicationRow] = field(default_factory=dict)
+    packs: dict[str, ApplicationPack] = field(default_factory=dict)  # full packs by job_id
 
 
 class MemoryProfileStore:
@@ -82,7 +84,9 @@ class MemoryProfileStore:
         return sorted(rows, key=lambda r: r.created_at or "", reverse=True)
 
     def record_pack(self, user_id: str, pack: ApplicationPack) -> None:
-        apps = self._user(user_id).applications
+        user = self._user(user_id)
+        user.packs[pack.job_id] = pack
+        apps = user.applications
         existing = apps.get(pack.job_id)
         apps[pack.job_id] = ApplicationRow(
             job_id=pack.job_id,
@@ -94,6 +98,9 @@ class MemoryProfileStore:
             applied_at=existing.applied_at if existing else None,
             created_at=(existing.created_at if existing else datetime.now().isoformat()),
         )
+
+    def get_pack(self, user_id: str, job_id: str) -> ApplicationPack | None:
+        return self._user(user_id).packs.get(job_id)
 
     def set_application_status(self, user_id: str, job_id: str, status: str) -> bool:
         row = self._user(user_id).applications.get(job_id)
@@ -228,6 +235,19 @@ class PostgresProfileStore:
                     json.dumps(pack.model_dump(mode="json")),
                 ),
             )
+
+    def get_pack(self, user_id: str, job_id: str) -> ApplicationPack | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT application_pack FROM public.applications
+                WHERE user_id = %s::uuid AND job_id = %s
+                """,
+                (user_id, job_id),
+            ).fetchone()
+        if row is None or not row[0]:
+            return None
+        return ApplicationPack.model_validate(row[0])
 
     def set_application_status(self, user_id: str, job_id: str, status: str) -> bool:
         with self._connect() as conn:

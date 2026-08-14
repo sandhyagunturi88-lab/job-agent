@@ -104,6 +104,20 @@ def list_applications(
     return [vars(row) for row in _store(request).list_applications(user.id)]
 
 
+@router.get("/applications/{job_id}/pack")
+def get_application_pack(
+    job_id: str,
+    request: Request,
+    user: CurrentUser = Depends(get_current_user),
+):
+    """Full Application Pack (tailored CV + answers) — consumed by the Chrome
+    extension for desktop autofill. The user still presses submit themselves."""
+    pack = _store(request).get_pack(user.id, job_id)
+    if pack is None:
+        raise HTTPException(status_code=404, detail="No pack for that job")
+    return pack
+
+
 class StatusRequest(BaseModel):
     status: str
 

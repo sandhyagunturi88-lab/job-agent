@@ -38,6 +38,7 @@ jobs:
       - run: npm install
       - run: npm run typecheck --workspaces --if-present
       - run: npm run build --workspace apps/web
+      - run: npm run test:extension
 
   deploy:
     # Deploys API + worker to Fly (lhr) on main. Vercel deploys the frontend

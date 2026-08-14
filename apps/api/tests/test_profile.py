@@ -100,6 +100,13 @@ def test_run_uses_stored_profile_and_feeds_tracker():
         assert export["applications"][0]["job_id"] == job["id"]
         assert export["preference_profile"] is not None
 
+        # the extension can fetch the full pack for autofill
+        full = client.get(f"/api/v1/me/applications/{job['id']}/pack").json()
+        assert full["job_title"] == job["title"]
+        assert {a["field"] for a in full["answers"]} >= {"notice_period", "right_to_work"}
+        assert full["tailored_cv"]["full_text"]
+        assert client.get("/api/v1/me/applications/nope/pack").status_code == 404
+
 
 def test_application_status_validation():
     with _client() as client:

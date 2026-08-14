@@ -3,15 +3,53 @@
   <head>
     <meta charset="UTF-8" />
     <style>
-      body { font-family: system-ui, sans-serif; width: 280px; padding: 16px; }
-      h1 { font-size: 15px; color: #1d4ed8; margin: 0 0 8px; }
-      p { font-size: 13px; color: #475569; margin: 0 0 8px; }
+      body { font-family: system-ui, sans-serif; width: 320px; margin: 0; padding: 14px; color: #0f172a; }
+      h1 { font-size: 15px; color: #1e40af; margin: 0 0 2px; }
+      p { font-size: 12px; color: #475569; margin: 4px 0; }
+      .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; margin: 8px 0; }
+      .card strong { font-size: 13px; }
+      button { width: 100%; border: 0; border-radius: 10px; padding: 10px; font-weight: 600; font-size: 13px; cursor: pointer; }
+      #fill { background: #1d4ed8; color: #fff; margin-top: 6px; }
+      #fill:disabled { opacity: .5; cursor: default; }
+      select, input { width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 8px; padding: 7px 8px; font-size: 12px; margin-top: 3px; }
+      label { font-size: 11px; color: #475569; display: block; margin-top: 6px; }
+      details { margin-top: 8px; }
+      summary { font-size: 12px; font-weight: 600; color: #334155; cursor: pointer; }
+      .ok { color: #047857; }
+      .warn { color: #b45309; }
+      .foot { text-align: center; color: #94a3b8; margin-top: 10px; }
     </style>
   </head>
   <body>
     <h1>JobPilot UK</h1>
-    <p id="status">Sign in via the JobPilot app to load your Application Packs.</p>
-    <p>Fields we fill are highlighted in blue. <strong>You press submit.</strong></p>
+    <p id="status">Loading your Application Packs…</p>
+
+    <div id="pack-area" hidden>
+      <div class="card">
+        <strong id="pack-title"></strong>
+        <p id="pack-company"></p>
+      </div>
+      <label for="pack-select" id="pack-select-label" hidden>Or pick a different pack</label>
+      <select id="pack-select" hidden></select>
+      <button id="fill">Fill this form</button>
+      <p id="result"></p>
+    </div>
+
+    <details id="settings">
+      <summary>Your details &amp; settings</summary>
+      <label>Full name<input id="c-name" autocomplete="name" /></label>
+      <label>Email<input id="c-email" type="email" autocomplete="email" /></label>
+      <label>Phone<input id="c-phone" autocomplete="tel" /></label>
+      <label>Location (city)<input id="c-location" /></label>
+      <label>LinkedIn URL<input id="c-linkedin" /></label>
+      <label>Current company<input id="c-company" /></label>
+      <label>JobPilot API URL<input id="c-api" placeholder="http://localhost:8000" /></label>
+      <label>API token (leave empty in dev)<input id="c-token" type="password" /></label>
+      <button id="save" style="background:#e2e8f0;margin-top:8px">Save</button>
+    </details>
+
+    <p class="foot">Filled fields are highlighted in blue.<br /><strong>You always press submit.</strong></p>
+    <script src="../lib/mapping.js"></script>
     <script src="popup.js"></script>
   </body>
 </html>

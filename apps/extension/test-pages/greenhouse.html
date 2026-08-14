@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <!-- Local replica of a classic Greenhouse application form, for manually
+       verifying the content script without visiting a real employer's page.
+       Open this file directly in any browser and press the test button. -->
+  <head>
+    <meta charset="UTF-8" />
+    <title>Fixture: Greenhouse application form</title>
+    <style>
+      body { font-family: system-ui, sans-serif; max-width: 640px; margin: 32px auto; }
+      .field { margin: 12px 0; }
+      label { display: block; font-size: 14px; margin-bottom: 4px; }
+      input, textarea, select { width: 100%; padding: 6px; box-sizing: border-box; }
+      #jp-test { background: #0f172a; color: #fff; padding: 10px 16px; border: 0; border-radius: 8px; }
+    </style>
+  </head>
+  <body>
+    <h1>Apply for Senior Python Engineer at Monzo Bank</h1>
+    <form onsubmit="alert('Submit pressed by the USER — JobPilot never does this.'); return false;">
+      <div class="field"><label for="first_name">First Name *</label><input id="first_name" /></div>
+      <div class="field"><label for="last_name">Last Name *</label><input id="last_name" /></div>
+      <div class="field"><label for="email">Email *</label><input id="email" type="email" /></div>
+      <div class="field"><label for="phone">Phone</label><input id="phone" /></div>
+      <div class="field"><label for="resume_file">Resume/CV *</label><input id="resume_file" type="file" name="resume" /></div>
+      <div class="field"><label for="q1">LinkedIn Profile</label><input id="q1" /></div>
+      <div class="field"><label for="q2">What is your notice period?</label><input id="q2" /></div>
+      <div class="field"><label for="q3">What are your salary expectations?</label><input id="q3" /></div>
+      <div class="field">
+        <label for="q4">Do you have the right to work in the UK?</label>
+        <select id="q4"><option value=""></option><option>Yes</option><option>No</option></select>
+      </div>
+      <div class="field">
+        <label for="q5">Will you require visa sponsorship?</label>
+        <select id="q5"><option value=""></option><option>Yes</option><option>No</option></select>
+      </div>
+      <div class="field"><label for="cover_letter_text">Cover Letter</label><textarea id="cover_letter_text" rows="4"></textarea></div>
+      <button type="submit">Submit Application</button>
+    </form>
+
+    <hr />
+    <button id="jp-test">▶ Test: fill with sample JobPilot pack</button>
+
+    <script src="../src/lib/mapping.js"></script>
+    <script src="../src/content/common.js"></script>
+    <script src="../src/content/greenhouse.js"></script>
+    <script src="./sample-pack.js"></script>
+    <script>
+      document.getElementById("jp-test").addEventListener("click", () => {
+        const result = jpFillGreenhouse(JP_SAMPLE_PAYLOAD);
+        jpToast(`Filled ${result.filled} fields` + (result.attached ? " + CV attached" : ""));
+      });
+    </script>
+  </body>
+</html>

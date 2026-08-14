@@ -93,5 +93,11 @@ every external service sits behind an interface and is mocked until keys are pro
    popovers, Application Pack with copy buttons, tracker with statuses
    (`/api/v1/me/*` endpoints; memory store without `DATABASE_URL`, Supabase
    tables with it)
-5. Chrome extension autofill (Greenhouse + Lever first)
+5. ✅ Chrome extension autofill (Greenhouse + Lever, classic + React boards):
+   auto-matches the open application page to a pack by URL, fills contact
+   details + label-mapped custom questions (notice/salary/right-to-work/
+   sponsorship/why-us, yes/no dropdowns handled), attaches the tailored CV
+   as .txt, highlights every filled field — never overwrites what you typed,
+   never submits. Fixture pages in `apps/extension/test-pages/`, pure mapping
+   logic tested via `npm run test:extension`
 6. Stripe billing (Free: 5 matches/week, 1 tailored CV; Pro unlimited)

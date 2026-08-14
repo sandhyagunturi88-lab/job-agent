@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <!-- Local replica of a Lever application form for manual verification. -->
+  <head>
+    <meta charset="UTF-8" />
+    <title>Fixture: Lever application form</title>
+    <style>
+      body { font-family: system-ui, sans-serif; max-width: 640px; margin: 32px auto; }
+      .application-question { margin: 12px 0; }
+      .text, label { display: block; font-size: 14px; margin-bottom: 4px; }
+      input, textarea, select { width: 100%; padding: 6px; box-sizing: border-box; }
+      #jp-test { background: #0f172a; color: #fff; padding: 10px 16px; border: 0; border-radius: 8px; }
+    </style>
+  </head>
+  <body>
+    <h1>Starling — Backend Engineer: Application</h1>
+    <form onsubmit="alert('Submit pressed by the USER — JobPilot never does this.'); return false;">
+      <div class="application-question"><label>Full name *</label><input name="name" /></div>
+      <div class="application-question"><label>Email *</label><input name="email" type="email" /></div>
+      <div class="application-question"><label>Phone</label><input name="phone" /></div>
+      <div class="application-question"><label>Current location</label><input name="location" /></div>
+      <div class="application-question"><label>Current company</label><input name="org" /></div>
+      <div class="application-question"><label>LinkedIn URL</label><input name="urls[LinkedIn]" /></div>
+      <div class="application-question"><label>Resume/CV</label><input name="resume" type="file" /></div>
+      <div class="application-question">
+        <div class="text">What is your notice period?</div>
+        <input name="cards[a1b2c3][field0]" />
+      </div>
+      <div class="application-question">
+        <div class="text">Do you require sponsorship to work in the UK?</div>
+        <select name="cards[a1b2c3][field1]"><option value=""></option><option>Yes</option><option>No</option></select>
+      </div>
+      <div class="application-question"><label>Additional information</label><textarea name="comments" rows="4"></textarea></div>
+      <button type="submit">Submit application</button>
+    </form>
+
+    <hr />
+    <button id="jp-test">▶ Test: fill with sample JobPilot pack</button>
+
+    <script src="../src/lib/mapping.js"></script>
+    <script src="../src/content/common.js"></script>
+    <script src="../src/content/lever.js"></script>
+    <script src="./sample-pack.js"></script>
+    <script>
+      document.getElementById("jp-test").addEventListener("click", () => {
+        const result = jpFillLever(JP_SAMPLE_PAYLOAD);
+        jpToast(`Filled ${result.filled} fields` + (result.attached ? " + CV attached" : ""));
+      });
+    </script>
+  </body>
+</html>
