@@ -33,6 +33,9 @@ apps/
   api/         FastAPI + LangGraph graph, WebSocket state stream
   worker/      arq workers: ingestion (Adzuna, Reed, DWP, ATS boards), dedupe, embeddings
   extension/   Chrome MV3 autofill (Greenhouse/Lever first)
+  cv-builder/  CV Studio plugin (Node/Express): guided CV builder with live preview
+               and PDF/Word export; also powers PDF/DOCX CV import in onboarding
+               (`npm run dev:cv-builder`, port 3000; see its README)
 packages/
   schemas/     Shared Pydantic models + TypeScript types (single source of truth)
 supabase/

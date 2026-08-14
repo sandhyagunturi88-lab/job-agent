@@ -1,7 +1,7 @@
 import type { ContractType, CVInventoryItem, PreferenceProfile } from "@jobpilot/schemas";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { savePlan, saveProfile, uploadCv } from "../lib/api";
+import { extractCvFile, savePlan, saveProfile, uploadCv } from "../lib/api";
 
 const CONTRACT_OPTIONS: { value: ContractType; label: string }[] = [
   { value: "permanent", label: "Permanent" },
@@ -56,7 +56,21 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
   const [contracts, setContracts] = useState<Set<ContractType>>(new Set(["permanent"]));
   const [avoid, setAvoid] = useState("");
 
-  const readFile = (file: File) => {
+  const readFile = async (file: File) => {
+    setError(null);
+    const name = file.name.toLowerCase();
+    if (name.endsWith(".pdf") || name.endsWith(".docx")) {
+      // PDF/Word go through the CV Builder plugin's deterministic extractor
+      setBusy(true);
+      try {
+        setCvText(await extractCvFile(file));
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => setCvText(String(reader.result ?? ""));
     reader.readAsText(file);
@@ -133,16 +147,17 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
                 placeholder={"Paste your CV text here…\n\nSkills\nPython, FastAPI, PostgreSQL\n\nExperience\nSenior Engineer — Acme, 2021–present\n- Cut API latency 40%"}
               />
               <label className="mt-2 block text-sm text-slate-500">
-                …or upload a .txt / .md file
+                …or upload your CV (PDF, Word, or text)
                 <input
                   type="file"
-                  accept=".txt,.md,text/plain,text/markdown"
-                  onChange={(e) => e.target.files?.[0] && readFile(e.target.files[0])}
+                  accept=".pdf,.docx,.txt,.md,text/plain,text/markdown"
+                  onChange={(e) => e.target.files?.[0] && void readFile(e.target.files[0])}
                   className="mt-1 block w-full text-xs"
                 />
               </label>
               <p className="mt-1 text-xs text-slate-400">
-                PDF/Word upload arrives with cloud storage — pasting text works today.
+                PDF and Word files are read by the CV Builder plugin — parsed in memory,
+                never stored.
               </p>
               <button
                 onClick={() => void parseCv()}

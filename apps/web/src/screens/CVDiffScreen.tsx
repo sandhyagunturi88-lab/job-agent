@@ -1,7 +1,7 @@
 import type { CVInventoryItem } from "@jobpilot/schemas";
 import { useEffect, useState } from "react";
 import Sheet from "../components/Sheet";
-import { getInventory, type useRun } from "../lib/api";
+import { cvBuilderUrl, getInventory, type useRun } from "../lib/api";
 
 export default function CVDiffScreen({ run }: { run: ReturnType<typeof useRun> }) {
   const { snapshot, busy, resume } = run;
@@ -21,10 +21,27 @@ export default function CVDiffScreen({ run }: { run: ReturnType<typeof useRun> }
 
   if (snapshot?.interrupt?.type !== "approve_cv") {
     return (
-      <p className="rounded-2xl bg-white p-4 text-sm text-slate-600 shadow-sm">
-        Nothing to review yet — once you pick jobs on the Today tab, the tailored CV diff
-        appears here for your approval.
-      </p>
+      <div className="space-y-3">
+        <p className="rounded-2xl bg-white p-4 text-sm text-slate-600 shadow-sm">
+          Nothing to review yet — once you pick jobs on the Today tab, the tailored CV diff
+          appears here for your approval.
+        </p>
+        <div className="rounded-2xl bg-white p-5 shadow-sm">
+          <h3 className="text-sm font-semibold">Need a CV from scratch?</h3>
+          <p className="mt-1 text-sm text-slate-500">
+            CV Studio is JobPilot's guided builder — step-by-step form, live preview, and
+            PDF/Word export. Built for first CVs and school leavers, useful for anyone.
+          </p>
+          <a
+            href={cvBuilderUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-3 block w-full rounded-xl bg-slate-100 py-2.5 text-center text-sm font-semibold text-slate-700"
+          >
+            Open CV Studio →
+          </a>
+        </div>
+      </div>
     );
   }
 

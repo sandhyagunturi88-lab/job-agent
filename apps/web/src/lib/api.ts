@@ -91,6 +91,32 @@ export const getApplications = () => get<ApplicationRow[]>("/api/v1/me/applicati
 export const setApplicationStatus = (jobId: string, status: string) =>
   send<{ job_id: string; status: string }>("PUT", `/api/v1/me/applications/${jobId}`, { status });
 
+// --- CV Builder plugin (apps/cv-builder — separate service, own origin) -----
+
+export const cvBuilderUrl: string =
+  import.meta.env.VITE_CVBUILDER_URL ?? "http://localhost:3000";
+
+/** Extract raw text from a PDF/DOCX/TXT CV via the CV Builder plugin
+ *  (deterministic — the file is parsed in memory and never stored). */
+export async function extractCvFile(file: File): Promise<string> {
+  const fd = new FormData();
+  fd.append("file", file);
+  let res: Response;
+  try {
+    res = await fetch(`${cvBuilderUrl}/api/extract-text`, { method: "POST", body: fd });
+  } catch {
+    throw new Error(
+      "Couldn't reach the CV Builder service for PDF/Word import — start it with " +
+        "`npm run dev:cv-builder`, or paste your CV as text instead.",
+    );
+  }
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}) as { error?: string });
+    throw new Error(body.error ?? "Could not read that file — paste your CV as text instead.");
+  }
+  return (await res.json()).text;
+}
+
 // --- billing ----------------------------------------------------------------
 
 export interface BillingStatus {

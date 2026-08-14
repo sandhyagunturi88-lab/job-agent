@@ -3,13 +3,16 @@
   "private": true,
   "workspaces": [
     "apps/web",
+    "apps/cv-builder",
     "packages/schemas"
   ],
   "scripts": {
     "dev": "npm run dev --workspace apps/web",
+    "dev:cv-builder": "npm run dev --workspace apps/cv-builder",
     "build": "npm run build --workspace apps/web",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
-    "test:extension": "node --test apps/extension/tests/mapping.test.js"
+    "test:extension": "node --test apps/extension/tests/mapping.test.js",
+    "test:cv-builder": "npm run test --workspace apps/cv-builder"
   }
 }
